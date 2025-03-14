@@ -40,10 +40,13 @@ async def fetch_and_update_fences():
             hash=0
         ))
 
-        # Process each message
-        for message in messages.messages:
+        # Track which fences have already been updated
+        updated_fences = set()
+
+        # Process messages in reverse order (newest first)
+        for message in reversed(messages.messages):
             msg_date = message.date.replace(tzinfo=None)  # Remove timezone info
-            if msg_date > time_limit:  # Filter messages from the last two hours
+            if msg_date > time_limit:  # Filter messages from the last 20 hours
                 message_text = message.message
                 logger.info(f"[{msg_date}] {message_text}")
 
@@ -52,8 +55,10 @@ async def fetch_and_update_fences():
                     fence_name = extract_fence_name(message_text)
                     status = analyze_message(message_text)
 
-                    if fence_name and status != "Unknown":
-                        await sync_to_async(update_fence_status)(fence_name, status, msg_date)  # Pass msg_date
+                    if fence_name and status != "Unknown" and fence_name not in updated_fences:
+                        # Update the fence status and message time
+                        await sync_to_async(update_fence_status)(fence_name, status, msg_date)
+                        updated_fences.add(fence_name)  # Mark this fence as updated
                     else:
                         logger.warning(f"No valid fence name or status found in message: {message_text[:50]}...")
                 else:
@@ -101,5 +106,5 @@ def update_fences(request):
 from django.shortcuts import render
 
 def fence_status(request):
-    fences = Fence.objects.all()
+    fences = Fence.objects.all().order_by('-message_time')  # Sort by message_time in descending order
     return render(request, 'fences.html', {'fences': fences})
