@@ -40,11 +40,11 @@ async def fetch_and_update_fences():
             hash=0
         ))
 
-        # Track which fences have already been updated
-        updated_fences = set()
+        # Dictionary to store the latest status for each fence
+        latest_fence_updates = {}
 
-        # Process messages in reverse order (newest first)
-        for message in reversed(messages.messages):
+        # Process messages in chronological order (oldest first)
+        for message in messages.messages:
             msg_date = message.date.replace(tzinfo=None)  # Remove timezone info
             if msg_date > time_limit:  # Filter messages from the last 20 hours
                 message_text = message.message
@@ -55,14 +55,17 @@ async def fetch_and_update_fences():
                     fence_name = extract_fence_name(message_text)
                     status = analyze_message(message_text)
 
-                    if fence_name and status != "Unknown" and fence_name not in updated_fences:
-                        # Update the fence status and message time
-                        await sync_to_async(update_fence_status)(fence_name, status, msg_date)
-                        updated_fences.add(fence_name)  # Mark this fence as updated
+                    if fence_name and status != "Unknown":
+                        # Store the latest status and message time for each fence
+                        latest_fence_updates[fence_name] = (status, msg_date)
                     else:
                         logger.warning(f"No valid fence name or status found in message: {message_text[:50]}...")
                 else:
                     logger.warning(f"Empty message: {message.id}")
+
+        # Update the database with the latest status for each fence
+        for fence_name, (status, msg_date) in latest_fence_updates.items():
+            await sync_to_async(update_fence_status)(fence_name, status, msg_date)
 
     except Exception as e:
         logger.error(f"Error fetching messages: {e}")
