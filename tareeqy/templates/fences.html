@@ -4,6 +4,51 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Fence Status</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        // Function to update fences and then refresh the fence data
+        function updateFencesAndRefresh() {
+            $.ajax({
+                url: "{% url 'update_fences' %}",  // URL to trigger update_fences
+                method: "GET",
+                success: function() {
+                    console.log("Fences updated successfully. Refreshing fence data...");
+                    // After updating fences, fetch the latest fence data
+                    updateFenceData();
+                },
+                error: function() {
+                    console.log("Error updating fences");
+                }
+            });
+        }
+
+        // Function to fetch and update fence data
+        function updateFenceData() {
+            $.ajax({
+                url: "{% url 'fence_status' %}",  // URL to fetch fence data
+                method: "GET",
+                success: function(data) {
+                    // Replace the table body with the new data
+                    $("tbody").html($(data).find("tbody").html());
+                    // Add 2 hours to the displayed time
+                    
+                },
+                error: function() {
+                    console.log("Error fetching fence data");
+                }
+            });
+        }
+
+       
+
+        // Refresh fences and data every (300000 milliseconds)
+        setInterval(updateFencesAndRefresh, 3000000);
+
+        // Initial fetch
+        $(document).ready(function() {
+            updateFencesAndRefresh();  // Update fences and refresh data on page load
+        });
+    </script>
 </head>
 <body>
     <h1>Fence Status</h1>
@@ -12,7 +57,7 @@
             <tr>
                 <th>Fence Name</th>
                 <th>Status</th>
-                <th>Message Time</th>  <!-- Add this column -->
+                <th>Last Updated</th>
             </tr>
         </thead>
         <tbody>
@@ -20,7 +65,7 @@
             <tr>
                 <td>{{ fence.name }}</td>
                 <td>{{ fence.status }}</td>
-                <td>{{ fence.message_time }}</td>  <!-- Display the message timestamp -->
+                <td>{{ fence.message_time }}</td>  <!-- Original time -->
             </tr>
             {% endfor %}
         </tbody>

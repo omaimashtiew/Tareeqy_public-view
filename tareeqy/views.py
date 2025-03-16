@@ -35,13 +35,13 @@ async def fetch_and_update_fences():
         logger.info(f"Connected to channel: {CHANNEL_USERNAME}")
         
         # Define the time limit in Palestine time (5 hours ago from now)
-        time_limit = datetime.now(PALESTINE_TZ) - timedelta(hours=5)
+        time_limit = datetime.now(PALESTINE_TZ) - timedelta(hours=1)
         logger.info(f"Time limit (Palestine time): {time_limit}")
 
         # Fetch the messages
         messages = await client(GetHistoryRequest(
             peer=entity,
-            limit=1000,  
+            limit=500,  
             offset_date=None,
             offset_id=0,
             max_id=0,
