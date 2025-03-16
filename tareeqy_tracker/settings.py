@@ -44,11 +44,8 @@ FENCE_NAMES = [
 STATUS_KEYWORDS = {
     "open": ["مفتوح", "مفتوحة", "سالك", "سالكة","نظيف","فتحت","سالكه","فاتحات"],
     "closed": ["مغلق", "مغلقة", "ازمة", "مازم", "كثافة سير","ازمه"],
-}
-TRAFFIC_JAM ={
-    "Minor":[ ],
-    "sever":[],
-
+    "Minor_traffic_jam":[ ],
+    "sever_traffic_jam":[],
 }
 # Application definition
 
