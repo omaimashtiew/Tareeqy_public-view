@@ -1,10 +1,10 @@
 <!DOCTYPE html>
- <html lang="en">
- <head>
-     <meta charset="UTF-8">
-     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-     <title>Fence Status</title>
-     <script>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fence Status</title>
+    <script>
         var socket = new WebSocket("ws://" + window.location.host + "/ws/fences/");
     
         socket.onmessage = function(event) {
@@ -17,21 +17,22 @@
                     <td>${fence.name}</td>
                     <td>${fence.status}</td>
                     <td>${fence.message_time}</td>
+                    <td><img src="${fence.image}" alt="${fence.status}" width="50"></td>
                 </tr>`;
                 tbody.innerHTML += row;
             });
         };
     </script>
-    
- </head>
- <body>
-     <h1>Fence Status</h1>
-     <table border="1">
+</head>
+<body>
+    <h1>Fence Status</h1>
+    <table border="1">
         <thead>
             <tr>
                 <th>Fence Name</th>
                 <th>Status</th>
                 <th>Message Time</th>
+                <th>Image</th>  <!-- New column for the image -->
             </tr>
         </thead>
         <tbody>
@@ -40,14 +41,20 @@
                 <td>{{ fence.name }}</td>
                 <td>{{ fence.status }}</td>
                 <td>{{ fence.message_time }}</td>
+                <td>
+                    {% if fence.image %}
+                        <img src="{{ fence.image }}" alt="{{ fence.status }}" width="50">
+                    {% else %}
+                        No image
+                    {% endif %}
+                </td>
             </tr>
             {% empty %}
             <tr>
-                <td colspan="3">No fence status data available.</td>
+                <td colspan="4">No fence status data available.</td>
             </tr>
             {% endfor %}
         </tbody>
     </table>
-    
- </body>
- </html>
+</body>
+</html>

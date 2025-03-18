@@ -9,6 +9,8 @@ import asyncio
 from asgiref.sync import sync_to_async
 import pytz  # Import pytz for timezone handling
 
+from .utils.normalization import normalize_name
+
 # Setting up logger
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -103,18 +105,27 @@ def analyze_message(text):
                 return status
     return "Unknown"
 
+
 def extract_fence_name(message_text):
-    """Extract the fence name from the message text"""
+    """Extract and normalize the fence name from the message text"""
     for fence_name in settings.FENCE_NAMES:
         if fence_name in message_text:
-            return fence_name
+            # Normalize the fence name before returning it
+            return normalize_name(fence_name)
     return None
+
+# views.py
+
+# views.py
 
 def update_fence_status(fence_name, status, message_time, latitude=0.0, longitude=0.0):
     """Update or create fence status in the FenceStatus model"""
     try:
+        # Normalize the fence name before saving
+        normalized_fence_name = normalize_name(fence_name)
+
         fence, created = Fence.objects.get_or_create(
-            name=fence_name,
+            name=normalized_fence_name,  # Use the normalized name
             defaults={'latitude': latitude, 'longitude': longitude}  # Set default values only when creating
         )
         
@@ -124,17 +135,25 @@ def update_fence_status(fence_name, status, message_time, latitude=0.0, longitud
             fence.longitude = longitude
             fence.save()
 
+        # Assign an image based on the status
+        if status == "open":
+            image = "/static/images/open.png"  # Path to the open image
+        elif status == "closed":
+            image = "/static/images/closed.png"  # Path to the closed image
+        else:
+            image = None  # No image for unknown status
+
         # Create a new FenceStatus entry for each status update
         FenceStatus.objects.create(
             fence=fence,
             status=status,
-            message_time=message_time
+            message_time=message_time,
+            image=image  # Add the image
         )
         
-        logger.info(f"Updated {fence_name} status to {status} with message time {message_time}")
+        logger.info(f"Updated {normalized_fence_name} status to {status} with message time {message_time}")
     except Exception as e:
-        logger.error(f"Error updating fence {fence_name}: {e}")
-
+        logger.error(f"Error updating fence {normalized_fence_name}: {e}")
 
 # Django view to trigger the fetch and update process
 def update_fences(request):
@@ -146,11 +165,16 @@ def update_fences(request):
 from django.shortcuts import render
 
 
-def fence_status(request):
-    fences = Fence.objects.all()
-    fence_statuses = []
+# views.py
 
-    for fence in fences:
+# views.py
+
+def fence_status(request):
+    # Fetch all fences and their latest status, ordered by message_time (newest first)
+    fence_statuses = []
+    
+    # Get the latest status for each fence
+    for fence in Fence.objects.all():
         latest_status = FenceStatus.objects.filter(fence=fence).order_by('-message_time').first()
         if latest_status:
             fence_statuses.append({
@@ -159,6 +183,10 @@ def fence_status(request):
                 'longitude': fence.longitude,
                 'status': latest_status.status,
                 'message_time': latest_status.message_time,
+                'image': latest_status.image,  # Add the image
             })
+    
+    # Sort the fence_statuses list by message_time (newest first)
+    fence_statuses.sort(key=lambda x: x['message_time'], reverse=True)
 
     return render(request, 'fences.html', {'fences': fence_statuses})
