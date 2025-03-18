@@ -4,7 +4,7 @@ from django.http import HttpResponse
 from django.conf import settings
 from telethon import TelegramClient
 from telethon.tl.functions.messages import GetHistoryRequest
-from .models import Fence
+from .models import Fence, FenceStatus
 import asyncio
 from asgiref.sync import sync_to_async
 import pytz  # Import pytz for timezone handling
@@ -66,7 +66,7 @@ async def fetch_and_update_fences():
             logger.info(f"Message date (Palestine time): {msg_date}")
             logger.info(f"Message text: {message.message}")
 
-            if msg_date > time_limit:  # Filter messages from the last 5 hours
+            if msg_date > time_limit:  # Filter messages from the last 1 hour
                 message_text = message.message
                 logger.info(f"[{msg_date}] {message_text}")
 
@@ -77,7 +77,7 @@ async def fetch_and_update_fences():
                     logger.info(f"Extracted fence name: {fence_name}, Status: {status}")
 
                     if fence_name and status != "Unknown" and fence_name not in updated_fences:
-                        # Update the fence status and message time
+                        # Update the fence status in FenceStatus model
                         await sync_to_async(update_fence_status)(fence_name, status, msg_date)
                         updated_fences.add(fence_name)  # Mark this fence as updated
                         logger.info(f"Updated fence: {fence_name}, Status: {status}, Message time: {msg_date}")
@@ -111,12 +111,17 @@ def extract_fence_name(message_text):
     return None
 
 def update_fence_status(fence_name, status, message_time):
-    """Update or create fence status in the database"""
+    """Update or create fence status in the FenceStatus model"""
     try:
         fence, created = Fence.objects.get_or_create(name=fence_name)
-        fence.status = status
-        fence.message_time = message_time  # Save the message timestamp
-        fence.save()
+        
+        # Create a new FenceStatus entry for each status update
+        fence_status = FenceStatus.objects.create(
+            fence=fence,
+            status=status,
+            message_time=message_time
+        )
+        
         logger.info(f"Updated {fence_name} status to {status} with message time {message_time}")
     except Exception as e:
         logger.error(f"Error updating fence {fence_name}: {e}")
