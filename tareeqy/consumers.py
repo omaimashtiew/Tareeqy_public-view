@@ -1,20 +1,43 @@
+# consumers.py
+
 import json
 from channels.generic.websocket import AsyncWebsocketConsumer
-from asgiref.sync import sync_to_async
-from .models import Fence
+from .models import FenceStatus
 
-class FenceConsumer(AsyncWebsocketConsumer):
+class FenceStatusConsumer(AsyncWebsocketConsumer):
     async def connect(self):
+        # Accept the WebSocket connection
         await self.accept()
-        await self.send_fence_data()
 
-    async def send_fence_data(self):
-        fences = await sync_to_async(list)(Fence.objects.all().order_by('-message_time'))
-        fence_data = [
-            {"name": f.name, "status": f.status, "message_time": f.message_time.strftime('%Y-%m-%d %H:%M:%S')}
-            for f in fences
-        ]
-        await self.send(text_data=json.dumps({"fences": fence_data}))
+        # Send initial data to the client
+        await self.send_initial_data()
+
+        # Add the client to a group for real-time updates
+        await self.channel_layer.group_add("fence_updates", self.channel_name)
 
     async def disconnect(self, close_code):
-        pass
+        # Remove the client from the group
+        await self.channel_layer.group_discard("fence_updates", self.channel_name)
+
+    async def send_initial_data(self):
+        # Fetch the latest fence statuses
+        fences = FenceStatus.objects.all().order_by('-message_time')
+        fence_data = [
+            {
+                'name': fence.fence.name,
+                'status': fence.status,
+                'message_time': fence.message_time.strftime('%Y-%m-%d %H:%M:%S'),
+                'image': fence.image,
+            }
+            for fence in fences
+        ]
+
+        # Send the data to the client
+        await self.send(text_data=json.dumps({
+            'type': 'initial_data',
+            'fences': fence_data,
+        }))
+
+    async def fence_update(self, event):
+        # Send real-time updates to the client
+        await self.send(text_data=json.dumps(event))

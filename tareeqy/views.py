@@ -24,6 +24,11 @@ CHANNEL_USERNAME = "@ahwalaltreq"  # Replace with your channel's username
 PALESTINE_TZ = pytz.timezone('Asia/Gaza')  # Use 'Asia/Hebron' if needed
 
 # Async function to fetch and update fences
+# views.py
+
+from channels.layers import get_channel_layer
+from asgiref.sync import async_to_sync
+
 async def fetch_and_update_fences():
     logger.info("fetch_and_update_fences function started")
     
@@ -83,6 +88,19 @@ async def fetch_and_update_fences():
                         await sync_to_async(update_fence_status)(fence_name, status, msg_date, latitude=0.0, longitude=0.0)
                         updated_fences.add(fence_name)  # Mark this fence as updated
                         logger.info(f"Updated fence: {fence_name}, Status: {status}, Message time: {msg_date}")
+
+                        # Notify WebSocket clients about the update
+                        channel_layer = get_channel_layer()
+                        await channel_layer.group_send(
+                            "fence_updates",
+                            {
+                                'type': 'fence_update',
+                                'name': fence_name,
+                                'status': status,
+                                'message_time': msg_date.strftime('%Y-%m-%d %H:%M:%S'),
+                                'image': "/static/images/open.png" if status == "open" else "/static/images/closed.png",
+                            }
+                        )
                     else:
                         logger.warning(f"No valid fence name or status found in message: {message_text[:50]}...")
                 else:

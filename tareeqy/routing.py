@@ -1,6 +1,8 @@
+# routing.py
+
 from django.urls import path
-from .consumers import FenceConsumer
+from .consumers import FenceStatusConsumer
 
 websocket_urlpatterns = [
-    path("ws/fences/", FenceConsumer.as_asgi()),
+    path('ws/fences/', FenceStatusConsumer.as_asgi()),
 ]
