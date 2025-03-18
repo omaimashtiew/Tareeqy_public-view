@@ -27,22 +27,27 @@
  <body>
      <h1>Fence Status</h1>
      <table border="1">
-         <thead>
-             <tr>
-                 <th>Fence Name</th>
-                 <th>Status</th>
-                 <th>Message Time</th>  
-             </tr>
-         </thead>
-         <tbody>
-             {% for fence in fences %}
-             <tr>
-                 <td>{{ fence.name }}</td>
-                 <td>{{ fence.status }}</td>
-                 <td>{{ fence.message_time }}</td>  <!-- Display the message timestamp -->
-             </tr>
-             {% endfor %}
-         </tbody>
-     </table>
+        <thead>
+            <tr>
+                <th>Fence Name</th>
+                <th>Status</th>
+                <th>Message Time</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for fence in fences %}
+            <tr>
+                <td>{{ fence.name }}</td>
+                <td>{{ fence.status }}</td>
+                <td>{{ fence.message_time }}</td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="3">No fence status data available.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    
  </body>
  </html>

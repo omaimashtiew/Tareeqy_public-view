@@ -66,7 +66,7 @@ async def fetch_and_update_fences():
             logger.info(f"Message date (Palestine time): {msg_date}")
             logger.info(f"Message text: {message.message}")
 
-            if msg_date > time_limit:  # Filter messages from the last 1 hour
+            if msg_date > time_limit:  # Filter messages from the last 5 hours
                 message_text = message.message
                 logger.info(f"[{msg_date}] {message_text}")
 
@@ -77,8 +77,8 @@ async def fetch_and_update_fences():
                     logger.info(f"Extracted fence name: {fence_name}, Status: {status}")
 
                     if fence_name and status != "Unknown" and fence_name not in updated_fences:
-                        # Update the fence status in FenceStatus model
-                        await sync_to_async(update_fence_status)(fence_name, status, msg_date)
+                        # Update the fence status and message time
+                        await sync_to_async(update_fence_status)(fence_name, status, msg_date, latitude=0.0, longitude=0.0)
                         updated_fences.add(fence_name)  # Mark this fence as updated
                         logger.info(f"Updated fence: {fence_name}, Status: {status}, Message time: {msg_date}")
                     else:
@@ -110,13 +110,22 @@ def extract_fence_name(message_text):
             return fence_name
     return None
 
-def update_fence_status(fence_name, status, message_time):
+def update_fence_status(fence_name, status, message_time, latitude=0.0, longitude=0.0):
     """Update or create fence status in the FenceStatus model"""
     try:
-        fence, created = Fence.objects.get_or_create(name=fence_name)
+        fence, created = Fence.objects.get_or_create(
+            name=fence_name,
+            defaults={'latitude': latitude, 'longitude': longitude}  # Set default values only when creating
+        )
         
+        # If the fence already exists, don't override coordinates unless explicitly provided
+        if not created and (latitude != 0.0 or longitude != 0.0):
+            fence.latitude = latitude
+            fence.longitude = longitude
+            fence.save()
+
         # Create a new FenceStatus entry for each status update
-        fence_status = FenceStatus.objects.create(
+        FenceStatus.objects.create(
             fence=fence,
             status=status,
             message_time=message_time
@@ -125,6 +134,7 @@ def update_fence_status(fence_name, status, message_time):
         logger.info(f"Updated {fence_name} status to {status} with message time {message_time}")
     except Exception as e:
         logger.error(f"Error updating fence {fence_name}: {e}")
+
 
 # Django view to trigger the fetch and update process
 def update_fences(request):
@@ -135,6 +145,20 @@ def update_fences(request):
 # View to display fence data
 from django.shortcuts import render
 
+
 def fence_status(request):
-    fences = Fence.objects.all().order_by('-message_time')  # Sort by message_time in descending order
-    return render(request, 'fences.html', {'fences': fences})
+    fences = Fence.objects.all()
+    fence_statuses = []
+
+    for fence in fences:
+        latest_status = FenceStatus.objects.filter(fence=fence).order_by('-message_time').first()
+        if latest_status:
+            fence_statuses.append({
+                'name': fence.name,
+                'latitude': fence.latitude,
+                'longitude': fence.longitude,
+                'status': latest_status.status,
+                'message_time': latest_status.message_time,
+            })
+
+    return render(request, 'fences.html', {'fences': fence_statuses})
