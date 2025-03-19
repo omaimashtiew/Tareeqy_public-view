@@ -24,6 +24,7 @@ CHANNEL_USERNAME = "@ahwalaltreq"  # Replace with your channel's username
 PALESTINE_TZ = pytz.timezone('Asia/Gaza')  # Use 'Asia/Hebron' if needed
 
 # Async function to fetch and update fences
+# views.py
 async def fetch_and_update_fences():
     logger.info("fetch_and_update_fences function started")
     
@@ -36,7 +37,7 @@ async def fetch_and_update_fences():
         entity = await client.get_entity(CHANNEL_USERNAME)
         logger.info(f"Connected to channel: {CHANNEL_USERNAME}")
         
-        # Define the time limit in Palestine time (5 hours ago from now)
+        # Define the time limit in Palestine time (1 hour ago from now)
         time_limit = datetime.now(PALESTINE_TZ) - timedelta(hours=1)
         logger.info(f"Time limit (Palestine time): {time_limit}")
 
@@ -53,6 +54,10 @@ async def fetch_and_update_fences():
         ))
         logger.info(f"Fetched {len(messages.messages)} messages")
 
+        # Fetch all fences from the database
+        fences = await sync_to_async(list)(Fence.objects.all())
+        logger.info(f"Fetched {len(fences)} fences from the database")
+
         # Track which fences have already been updated
         updated_fences = set()
 
@@ -68,23 +73,23 @@ async def fetch_and_update_fences():
             logger.info(f"Message date (Palestine time): {msg_date}")
             logger.info(f"Message text: {message.message}")
 
-            if msg_date > time_limit:  # Filter messages from the last 5 hours
+            if msg_date > time_limit:  # Filter messages from the last hour
                 message_text = message.message
                 logger.info(f"[{msg_date}] {message_text}")
 
                 if message_text.strip():  # If the message is not empty
-                    # Extract fence name and status
-                    fence_name = extract_fence_name(message_text)
-                    status = analyze_message(message_text)
-                    logger.info(f"Extracted fence name: {fence_name}, Status: {status}")
+                    # Search for fence names in the message
+                    for fence in fences:
+                        if fence.name in message_text:  # Check if the fence name is in the message
+                            status = analyze_message(message_text)  # Determine the status
+                            logger.info(f"Found fence: {fence.name}, Status: {status}")
 
-                    if fence_name and status != "Unknown" and fence_name not in updated_fences:
-                        # Update the fence status and message time
-                        await sync_to_async(update_fence_status)(fence_name, status, msg_date, latitude=0.0, longitude=0.0)
-                        updated_fences.add(fence_name)  # Mark this fence as updated
-                        logger.info(f"Updated fence: {fence_name}, Status: {status}, Message time: {msg_date}")
-                    else:
-                        logger.warning(f"No valid fence name or status found in message: {message_text[:50]}...")
+                            if status != "Unknown" and fence.name not in updated_fences:
+                                # Update the fence status and message time
+                                await sync_to_async(update_fence_status)(fence, status, msg_date)
+                                updated_fences.add(fence.name)  # Mark this fence as updated
+                                logger.info(f"Updated fence: {fence.name}, Status: {status}, Message time: {msg_date}")
+                            break  # Stop searching once a match is found
                 else:
                     logger.warning(f"Empty message: {message.id}")
             else:
@@ -96,8 +101,9 @@ async def fetch_and_update_fences():
         await client.disconnect()
         logger.info("Telegram client disconnected")
 
+# views.py
 def analyze_message(text):
-    """Analyze the message to determine the status of the fence"""
+    """Analyze the message to determine the status of the fence."""
     text = text.lower()
     for status, keywords in settings.STATUS_KEYWORDS.items():
         for keyword in keywords:
@@ -114,23 +120,10 @@ def extract_fence_name(message_text):
             return normalize_name(fence_name)
     return None
 
-def update_fence_status(fence_name, status, message_time, latitude=0.0, longitude=0.0):
-    """Update or create fence status in the FenceStatus model"""
+# views.py
+def update_fence_status(fence, status, message_time):
+    """Update or create fence status in the FenceStatus model."""
     try:
-        # Normalize the fence name before saving
-        normalized_fence_name = normalize_name(fence_name)
-
-        fence, created = Fence.objects.get_or_create(
-            name=normalized_fence_name,  # Use the normalized name
-            defaults={'latitude': latitude, 'longitude': longitude}  # Set default values only when creating
-        )
-        
-        # If the fence already exists, don't override coordinates unless explicitly provided
-        if not created and (latitude != 0.0 or longitude != 0.0):
-            fence.latitude = latitude
-            fence.longitude = longitude
-            fence.save()
-
         # Assign an image based on the status
         if status == "open":
             image = "/static/images/open.png"  # Path to the open image
@@ -147,9 +140,9 @@ def update_fence_status(fence_name, status, message_time, latitude=0.0, longitud
             image=image  # Add the image
         )
         
-        logger.info(f"Updated {normalized_fence_name} status to {status} with message time {message_time}")
+        logger.info(f"Updated {fence.name} status to {status} with message time {message_time}")
     except Exception as e:
-        logger.error(f"Error updating fence {normalized_fence_name}: {e}")
+        logger.error(f"Error updating fence {fence.name}: {e}")
 
 # Django view to trigger the fetch and update process
 def update_fences(request):
