@@ -4,47 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Fence Status</title>
-    <script>
-        // Connect to the WebSocket
-        var socket = new WebSocket("ws://" + window.location.host + "/ws/fences/");
-
-        socket.onmessage = function(event) {
-            var data = JSON.parse(event.data);
-            var tbody = document.querySelector("tbody");
-
-            if (data.type === 'initial_data') {
-                // Populate the table with initial data
-                tbody.innerHTML = "";
-                data.fences.forEach(fence => {
-                    var row = `<tr>
-                        <td>${fence.name}</td>
-                        <td>${fence.status}</td>
-                        <td>${fence.message_time}</td>
-                        <td><img src="${fence.image}" alt="${fence.status}" width="50"></td>
-                    </tr>`;
-                    tbody.innerHTML += row;
-                });
-            } else if (data.type === 'fence_update') {
-                // Add or update a row for the new fence status
-                var existingRow = Array.from(tbody.rows).find(row => row.cells[0].textContent === data.name);
-                if (existingRow) {
-                    // Update the existing row
-                    existingRow.cells[1].textContent = data.status;
-                    existingRow.cells[2].textContent = data.message_time;
-                    existingRow.cells[3].innerHTML = `<img src="${data.image}" alt="${data.status}" width="50">`;
-                } else {
-                    // Add a new row
-                    var row = `<tr>
-                        <td>${data.name}</td>
-                        <td>${data.status}</td>
-                        <td>${data.message_time}</td>
-                        <td><img src="${data.image}" alt="${data.status}" width="50"></td>
-                    </tr>`;
-                    tbody.innerHTML = row + tbody.innerHTML;
-                }
-            }
-        };
-    </script>
 </head>
 <body>
     <h1>Fence Status</h1>
