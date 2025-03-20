@@ -9,7 +9,7 @@ import asyncio
 from asgiref.sync import sync_to_async
 import pytz  # Import pytz for timezone handling
 
-from .utils.normalization import normalize_name
+from .utils.normalization import normalize_name  # Ensure this import is correct
 
 # Setting up logger
 logging.basicConfig(level=logging.INFO)
@@ -24,7 +24,6 @@ CHANNEL_USERNAME = "@ahwalaltreq"  # Replace with your channel's username
 PALESTINE_TZ = pytz.timezone('Asia/Gaza')  # Use 'Asia/Hebron' if needed
 
 # Async function to fetch and update fences
-# views.py
 async def fetch_and_update_fences():
     logger.info("fetch_and_update_fences function started")
     
@@ -78,17 +77,26 @@ async def fetch_and_update_fences():
                 logger.info(f"[{msg_date}] {message_text}")
 
                 if message_text.strip():  # If the message is not empty
+                    # Normalize the message text
+                    normalized_message_text = normalize_name(message_text)
+                    logger.info(f"Normalized message text: {normalized_message_text}")
+
                     # Search for fence names in the message
                     for fence in fences:
-                        if fence.name in message_text:  # Check if the fence name is in the message
-                            status = analyze_message(message_text)  # Determine the status
-                            logger.info(f"Found fence: {fence.name}, Status: {status}")
+                        # Normalize the fence name from the database
+                        normalized_fence_name = normalize_name(fence.name)
+                        logger.info(f"Normalized fence name: {normalized_fence_name}")
 
-                            if status != "Unknown" and fence.name not in updated_fences:
+                        # Check if the normalized fence name is in the normalized message text
+                        if normalized_fence_name in normalized_message_text:
+                            status = analyze_message(message_text)  # Determine the status
+                            logger.info(f"Found fence: {normalized_fence_name}, Status: {status}")
+
+                            if status != "Unknown" and normalized_fence_name not in updated_fences:
                                 # Update the fence status and message time
                                 await sync_to_async(update_fence_status)(fence, status, msg_date)
-                                updated_fences.add(fence.name)  # Mark this fence as updated
-                                logger.info(f"Updated fence: {fence.name}, Status: {status}, Message time: {msg_date}")
+                                updated_fences.add(normalized_fence_name)  # Mark this fence as updated
+                                logger.info(f"Updated fence: {normalized_fence_name}, Status: {status}, Message time: {msg_date}")
                             break  # Stop searching once a match is found
                 else:
                     logger.warning(f"Empty message: {message.id}")
@@ -101,7 +109,7 @@ async def fetch_and_update_fences():
         await client.disconnect()
         logger.info("Telegram client disconnected")
 
-# views.py
+
 def analyze_message(text):
     """Analyze the message to determine the status of the fence."""
     text = text.lower()
@@ -111,16 +119,6 @@ def analyze_message(text):
                 return status
     return "Unknown"
 
-
-def extract_fence_name(message_text):
-    """Extract and normalize the fence name from the message text"""
-    for fence_name in settings.FENCE_NAMES:
-        if fence_name in message_text:
-            # Normalize the fence name before returning it
-            return normalize_name(fence_name)
-    return None
-
-# views.py
 def update_fence_status(fence, status, message_time):
     """Update or create fence status in the FenceStatus model."""
     try:
@@ -129,6 +127,8 @@ def update_fence_status(fence, status, message_time):
             image = "/static/images/open.png"  # Path to the open image
         elif status == "closed":
             image = "/static/images/closed.png"  # Path to the closed image
+        elif status == "sever_traffic_jam":
+            image = "/static/images/traffic.png"  # Path to the traffic image
         else:
             image = None  # No image for unknown status
 
@@ -144,11 +144,13 @@ def update_fence_status(fence, status, message_time):
     except Exception as e:
         logger.error(f"Error updating fence {fence.name}: {e}")
 
+
 # Django view to trigger the fetch and update process
 def update_fences(request):
     # Call the async function to fetch and update fence statuses synchronously
     asyncio.run(fetch_and_update_fences())
     return HttpResponse("Fences have been updated successfully.")
+
 
 # View to display fence data
 from django.shortcuts import render
