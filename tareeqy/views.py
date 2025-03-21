@@ -9,8 +9,6 @@ import asyncio
 from asgiref.sync import sync_to_async
 import pytz  # Import pytz for timezone handling
 
-from .utils.normalization import normalize_name  # Ensure this import is correct
-
 # Setting up logger
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -22,6 +20,36 @@ CHANNEL_USERNAME = "@ahwalaltreq"  # Replace with your channel's username
 
 # Define Palestine time zone
 PALESTINE_TZ = pytz.timezone('Asia/Gaza')  # Use 'Asia/Hebron' if needed
+
+# Normalization mapping
+NAME_MAPPING = {
+    "صرة": "صره",  
+    "صره": "صره",  
+    "العيزريه": "العيزرية",  
+    "العيزرية": "العيزرية", 
+    "عين سينا": "عين سينيا",  
+    "عين سينيا": "عين سينيا",  
+    "زعترا": "زعترة",  
+    "زعترة": "زعترة", 
+    "زعتره": "زعترة", 
+    "الساوية": "الساوية",
+    "الساويه": "الساوية",
+    "المربعه": "المربعة",  
+    "المربعة": "المربعة",  
+    "حواره": "حوارة",  
+    "حوارة": "حوارة", 
+}
+
+def normalize_name(name):
+    """Normalize a name using the NAME_MAPPING dictionary."""
+    # Replace "ة" with "ه" for consistency
+    name = name.replace("ة", "ه")
+    normalized_name = name.strip()
+    return NAME_MAPPING.get(normalized_name, normalized_name)
+
+def normalize_names(names):
+    """Normalize a list of names."""
+    return list(set(normalize_name(name) for name in names))
 
 # Async function to fetch and update fences
 async def fetch_and_update_fences():
@@ -122,35 +150,63 @@ def analyze_message(text):
 def update_fence_status(fence, status, message_time):
     """Update or create fence status in the FenceStatus model."""
     try:
-        # Assign an image based on the status
-        if status == "open":
-            image = "/static/images/open.png"  # Path to the open image
-        elif status == "closed":
-            image = "/static/images/closed.png"  # Path to the closed image
-        elif status == "sever_traffic_jam":
-            image = "/static/images/traffic.png"  # Path to the traffic image
-        else:
-            image = None  # No image for unknown status
-
-        # Create a new FenceStatus entry for each status update
-        FenceStatus.objects.create(
-            fence=fence,
-            status=status,
-            message_time=message_time,
-            image=image  # Add the image
-        )
+        # Get the latest status for this fence
+        latest_status = FenceStatus.objects.filter(fence=fence).order_by('-message_time').first()
         
-        logger.info(f"Updated {fence.name} status to {status} with message time {message_time}")
+        # Only create a new entry if the status has changed or if there is no previous status
+        if not latest_status or latest_status.status != status:
+            # Assign an image based on the status
+            if status == "open":
+                image = "/static/images/open.png"  # Path to the open image
+            elif status == "closed":
+                image = "/static/images/closed.png"  # Path to the closed image
+            elif status == "sever_traffic_jam":
+                image = "/static/images/traffic.png"  # Path to the traffic image
+            else:
+                image = None  # No image for unknown status
+
+            # Create a new FenceStatus entry
+            FenceStatus.objects.create(
+                fence=fence,
+                status=status,
+                message_time=message_time,
+                image=image  # Add the image
+            )
+            
+            logger.info(f"Updated {fence.name} status to {status} with message time {message_time}")
+        else:
+            logger.info(f"No change in status for {fence.name}. Skipping update.")
     except Exception as e:
         logger.error(f"Error updating fence {fence.name}: {e}")
 
 
 # Django view to trigger the fetch and update process
-def update_fences(request):
-    # Call the async function to fetch and update fence statuses synchronously
-    asyncio.run(fetch_and_update_fences())
-    return HttpResponse("Fences have been updated successfully.")
+from django.shortcuts import render
+from django.core.serializers import serialize
+from .models import Fence, FenceStatus
+import json
 
+def update_fences(request):
+    # Call the async function to fetch and update fence statuses
+    asyncio.run(fetch_and_update_fences())
+
+    # Fetch all fences and their latest status
+    fences_data = []
+    for fence in Fence.objects.all():
+        latest_status = FenceStatus.objects.filter(fence=fence).order_by('-message_time').first()
+        if latest_status:
+            fences_data.append({
+                'name': fence.name,
+                'latitude': fence.latitude,
+                'longitude': fence.longitude,
+                'status': latest_status.status,
+            })
+
+    # Convert the fence data to JSON
+    fences_json = json.dumps(fences_data)
+
+    # Render the update_fences.html template with the fence data
+    return render(request, 'update_fences.html', {'fences_json': fences_json})
 
 # View to display fence data
 from django.shortcuts import render

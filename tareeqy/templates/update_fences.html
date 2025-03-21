@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+{% load static %}
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Update Fences</title>
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <style>
+        #map { height: 600px; }  /* Set the map height */
+    </style>
+</head>
+<body>
+    <h1>Update Fences</h1>
+    <div id="map"></div>  <!-- Map container -->
+
+    <!-- Leaflet JavaScript -->
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script>
+        // Initialize the map
+        var map = L.map('map').setView([31.898043, 35.204269], 10);  // Center on Palestine
+
+        // Add a tile layer (e.g., OpenStreetMap)
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
+
+        // Load fence data from Django
+        var fences = JSON.parse('{{ fences_json|escapejs }}');
+
+        // Define custom icons
+        var greenIcon = L.icon({
+            iconUrl: '{% static "images/open.png" %}',
+            iconSize: [25, 25]
+        });
+        var redIcon = L.icon({
+            iconUrl: '{% static "images/closed.png" %}',
+            iconSize: [25, 25]
+        });
+        var orangeIcon = L.icon({
+            iconUrl: '{% static "images/traffic.png" %}',
+            iconSize: [25, 25]
+        });
+
+        // Add markers to the map
+        fences.forEach(function(fence) {
+            var icon = fence.status === "open" ? greenIcon :
+                       fence.status === "closed" ? redIcon :
+                       orangeIcon;
+            L.marker([fence.latitude, fence.longitude], { icon: icon })
+                .bindPopup(`<b>${fence.name}</b><br>Status: ${fence.status}`)
+                .addTo(map);
+        });
+    </script>
+</body>
+</html>
