@@ -42,7 +42,6 @@ NAME_MAPPING = {
 
 def normalize_name(name):
     """Normalize a name using the NAME_MAPPING dictionary."""
-    # Replace "ة" with "ه" for consistency
     name = name.replace("ة", "ه")
     normalized_name = name.strip()
     return NAME_MAPPING.get(normalized_name, normalized_name)
