@@ -1,10 +1,23 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta http-equiv="refresh" content="30">  <!-- Refresh every 30 seconds -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Fence Status</title>
+    <script>
+    const map = L.map('map').setView([31.946570, 35.272847], 10);  // Default Palestine view
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+
+    // Click handler to get coordinates
+    map.on('click', function(e) {
+        const { lat, lng } = e.latlng;
+        console.log("Coordinates:", lat, lng);  // Log to browser console
+        alert(`Latitude: ${lat}\nLongitude: ${lng}`);  // Show popup
+    });
+
+    // Your existing fence markers...
+</script>
 </head>
 <body>
     <h1>Fence Status</h1>

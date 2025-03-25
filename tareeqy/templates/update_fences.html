@@ -26,6 +26,13 @@
             attribution: '© OpenStreetMap contributors'
         }).addTo(map);
 
+        // ===== [NEW] Click handler to get coordinates =====
+        map.on('click', function(e) {
+            const { lat, lng } = e.latlng;
+            console.log("Coordinates:", lat, lng);
+            alert(`Latitude: ${lat.toFixed(6)}\nLongitude: ${lng.toFixed(6)}`);
+        });
+
         // Load fence data from Django
         var fences = JSON.parse('{{ fences_json|escapejs }}');
 
