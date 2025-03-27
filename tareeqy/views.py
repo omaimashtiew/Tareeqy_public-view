@@ -1,13 +1,18 @@
+
 import logging
 from datetime import datetime, timedelta
 from django.http import HttpResponse
 from django.conf import settings
+from django.db.models import Max  # Added missing import
 from telethon import TelegramClient
 from telethon.tl.functions.messages import GetHistoryRequest
 from .models import Fence, FenceStatus
 import asyncio
 from asgiref.sync import sync_to_async
-import pytz  # Import pytz for timezone handling
+import pytz 
+import re
+from fuzzywuzzy import fuzz
+from fuzzywuzzy import process
 
 # Setting up logger
 logging.basicConfig(level=logging.INFO)
@@ -16,12 +21,24 @@ logger = logging.getLogger(__name__)
 # API credentials and channel
 API_ID = 28313142
 API_HASH = "1937d577a86353af13fbb92c82f25306"
-CHANNEL_USERNAME = "@ahwalaltreq"  # Replace with your channel's username
+CHANNEL_USERNAME = "@ahwalaltreq"
 
 # Define Palestine time zone
-PALESTINE_TZ = pytz.timezone('Asia/Gaza')  # Use 'Asia/Hebron' if needed
+PALESTINE_TZ = pytz.timezone('Asia/Gaza')
+COMMON_PREFIXES = r'^(ال|ل|لل|بال|ول|في|عن|من|عند|وال)'
 
-# Normalization mapping
+def normalize_text(text):
+    """Normalize Arabic text for matching"""
+    if not text:
+        return ""
+    
+    text = re.sub(COMMON_PREFIXES, '', text.strip())
+    text = text.replace("ة", "ه")
+    text = text.replace("أ", "ا")
+    text = text.replace("إ", "ا")
+    text = text.replace("آ", "ا")
+    return text.strip()
+
 NAME_MAPPING = {
     "صرة": "صره",  
     "صره": "صره",  
@@ -40,37 +57,55 @@ NAME_MAPPING = {
     "حوارة": "حوارة", 
 }
 
-def normalize_name(name):
-    """Normalize a name using the NAME_MAPPING dictionary."""
-    name = name.replace("ة", "ه")
-    normalized_name = name.strip()
-    return NAME_MAPPING.get(normalized_name, normalized_name)
+def find_fences_in_message(message_text, fences):
+    """
+    Find ALL fences mentioned in a message, handling both short and long messages.
+    Returns list of matched Fence objects.
+    """
+    fence_map = {normalize_text(f.name): f for f in fences}
+    found = set()
+    normalized_msg = normalize_text(message_text)
+    
+    # Split message into meaningful parts if it's long
+    if len(normalized_msg) > 100:
+        # Split by common Arabic separators (comma, period, newline)
+        parts = [p.strip() for p in re.split(r'[،\.\n]', normalized_msg) if p.strip()]
+    else:
+        parts = [normalized_msg]
+    
+    # Process each part separately
+    for part in parts:
+        # 1. First try exact matches in this part
+        for norm_name, fence in fence_map.items():
+            if norm_name in part:
+                found.add(fence)
+        
+        # 2. If no exact matches, try fuzzy matching for this part
+        if not found:
+            matches = process.extract(
+                part,
+                fence_map.keys(),
+                scorer=fuzz.token_set_ratio,
+                limit=3
+            )
+            for match, score in matches:
+                if score >= 70:
+                    found.add(fence_map[match])
+    
+    return list(found)
 
-def normalize_names(names):
-    """Normalize a list of names."""
-    return list(set(normalize_name(name) for name in names))
-
-# Async function to fetch and update fences
 async def fetch_and_update_fences():
     logger.info("fetch_and_update_fences function started")
-    
-    # Initialize the Telegram client
     client = TelegramClient("session_name", API_ID, API_HASH)
     await client.start()
 
     try:
-        # Get the channel entity
         entity = await client.get_entity(CHANNEL_USERNAME)
-        logger.info(f"Connected to channel: {CHANNEL_USERNAME}")
-        
-        # Define the time limit in Palestine time (1 hour ago from now)
         time_limit = datetime.now(PALESTINE_TZ) - timedelta(hours=1)
-        logger.info(f"Time limit (Palestine time): {time_limit}")
-
-        # Fetch the messages
+        
         messages = await client(GetHistoryRequest(
             peer=entity,
-            limit=500,  
+            limit=500,
             offset_date=None,
             offset_id=0,
             max_id=0,
@@ -78,64 +113,45 @@ async def fetch_and_update_fences():
             add_offset=0,
             hash=0
         ))
-        logger.info(f"Fetched {len(messages.messages)} messages")
-
-        # Fetch all fences from the database
+        
         fences = await sync_to_async(list)(Fence.objects.all())
-        logger.info(f"Fetched {len(fences)} fences from the database")
-
-        # Track which fences have already been updated
-        updated_fences = set()
-
-        # Process messages in reverse order (newest first)
+        processed_messages = 0
+        matched_messages = 0
+        
         for message in reversed(messages.messages):
-            if not message.message:  # Skip if the message is None or empty
-                logger.warning(f"Empty or None message: {message.id}")
+            if not message.message:
                 continue
-
-            # Convert message date to Palestine time
-            msg_date_utc = message.date.replace(tzinfo=pytz.UTC)  # Ensure message date is timezone-aware (UTC)
-            msg_date = msg_date_utc.astimezone(PALESTINE_TZ)  # Convert to Palestine time
-            logger.info(f"Message date (Palestine time): {msg_date}")
-            logger.info(f"Message text: {message.message}")
-
-            if msg_date > time_limit:  # Filter messages from the last hour
+                
+            processed_messages += 1  # Moved inside message processing loop
+            msg_date = message.date.replace(tzinfo=pytz.UTC).astimezone(PALESTINE_TZ)
+            if msg_date > time_limit:
                 message_text = message.message
-                logger.info(f"[{msg_date}] {message_text}")
-
-                if message_text.strip():  # If the message is not empty
-                    # Normalize the message text
-                    normalized_message_text = normalize_name(message_text)
-                    logger.info(f"Normalized message text: {normalized_message_text}")
-
-                    # Search for fence names in the message
-                    for fence in fences:
-                        # Normalize the fence name from the database
-                        normalized_fence_name = normalize_name(fence.name)
-                        logger.info(f"Normalized fence name: {normalized_fence_name}")
-
-                        # Check if the normalized fence name is in the normalized message text
-                        if normalized_fence_name in normalized_message_text:
-                            status = analyze_message(message_text)  # Determine the status
-                            logger.info(f"Found fence: {normalized_fence_name}, Status: {status}")
-
-                            if status != "Unknown" and normalized_fence_name not in updated_fences:
-                                # Update the fence status and message time
-                                await sync_to_async(update_fence_status)(fence, status, msg_date)
-                                updated_fences.add(normalized_fence_name)  # Mark this fence as updated
-                                logger.info(f"Updated fence: {normalized_fence_name}, Status: {status}, Message time: {msg_date}")
-                            break  # Stop searching once a match is found
-                else:
-                    logger.warning(f"Empty message: {message.id}")
-            else:
-                logger.info(f"Message {message.id} is older than the time limit and will be skipped")
-
+                status = analyze_message(message_text)
+                
+                if status != "Unknown":
+                    matching_fences = await sync_to_async(find_fences_in_message)(
+                        message_text,
+                        fences
+                    )
+                    
+                    if matching_fences:  # Only count if we found matches
+                        matched_messages += len(matching_fences)
+                        for fence in matching_fences:
+                            await sync_to_async(update_fence_status)(
+                                fence, status, msg_date
+                            )
+                    else:
+                        logger.warning(f"No fence matched for message: {message_text}")
+        
+        logger.info(
+            f"Processed {processed_messages} messages, "
+            f"matched {matched_messages} fences ({matched_messages/max(1,processed_messages)*100:.1f}%)"
+        )
+        
     except Exception as e:
-        logger.error(f"Error fetching messages: {e}")
+        logger.error(f"Error in fetch_and_update_fences: {str(e)}")
     finally:
         await client.disconnect()
-        logger.info("Telegram client disconnected")
-
 
 def analyze_message(text):
     """Analyze the message to determine the status of the fence."""
@@ -147,36 +163,24 @@ def analyze_message(text):
     return "Unknown"
 
 def update_fence_status(fence, status, message_time):
-    """Update or create fence status in the FenceStatus model."""
+    """Always create new status record for history"""
     try:
-        # Get the latest status for this fence
-        latest_status = FenceStatus.objects.filter(fence=fence).order_by('-message_time').first()
+        # Assign image based on status
+        image = {
+            "open": "/static/images/open.png",
+            "closed": "/static/images/closed.png",
+            "sever_traffic_jam": "/static/images/traffic.png"
+        }.get(status)
         
-        # Only create a new entry if the status has changed or if there is no previous status
-        if not latest_status or latest_status.status != status:
-            # Assign an image based on the status
-            if status == "open":
-                image = "/static/images/open.png"  # Path to the open image
-            elif status == "closed":
-                image = "/static/images/closed.png"  # Path to the closed image
-            elif status == "sever_traffic_jam":
-                image = "/static/images/traffic.png"  # Path to the traffic image
-            else:
-                image = None  # No image for unknown status
-
-            # Create a new FenceStatus entry
-            FenceStatus.objects.create(
-                fence=fence,
-                status=status,
-                message_time=message_time,
-                image=image  # Add the image
-            )
-            
-            logger.info(f"Updated {fence.name} status to {status} with message time {message_time}")
-        else:
-            logger.info(f"No change in status for {fence.name}. Skipping update.")
+        FenceStatus.objects.create(
+            fence=fence,
+            status=status,
+            message_time=message_time,
+            image=image
+        )
+        logger.info(f"Recorded {fence.name} status: {status} at {message_time}")
     except Exception as e:
-        logger.error(f"Error updating fence {fence.name}: {e}")
+        logger.error(f"Error updating {fence.name}: {e}")
 
 
 # Django view to trigger the fetch and update process
@@ -211,23 +215,20 @@ def update_fences(request):
 from django.shortcuts import render
 
 def fence_status(request):
-    # Fetch all fences and their latest status, ordered by message_time (newest first)
-    fence_statuses = []
+    # Get only the most recent status for each fence
+    latest_statuses = FenceStatus.objects.filter(
+        id__in=FenceStatus.objects.values('fence')
+            .annotate(max_id=Max('id'))
+            .values('max_id')
+    ).select_related('fence')
     
-    # Get the latest status for each fence
-    for fence in Fence.objects.all():
-        latest_status = FenceStatus.objects.filter(fence=fence).order_by('-message_time').first()
-        if latest_status:
-            fence_statuses.append({
-                'name': fence.name,
-                'latitude': fence.latitude,
-                'longitude': fence.longitude,
-                'status': latest_status.status,
-                'message_time': latest_status.message_time,
-                'image': latest_status.image,  # Add the image
-            })
+    fence_statuses = [{
+        'name': status.fence.name,
+        'latitude': status.fence.latitude,
+        'longitude': status.fence.longitude,
+        'status': status.status,
+        'message_time': status.message_time,
+        'image': status.image,
+    } for status in latest_statuses]
     
-    # Sort the fence_statuses list by message_time (newest first)
-    fence_statuses.sort(key=lambda x: x['message_time'], reverse=True)
-
     return render(request, 'fences.html', {'fences': fence_statuses})

@@ -3,62 +3,88 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Update Fences</title>
-    <!-- Leaflet CSS -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Tareeqy Map</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
     <style>
-        #map { height: 600px; }  /* Set the map height */
+        body, html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            overflow: hidden;
+        }
+        #map {
+            height: 100vh;
+            width: 100vw;
+            touch-action: pan-x pan-y;
+        }
+        /* Smaller popup styling */
+        .leaflet-popup-content {
+            margin: 8px;
+            font-size: 12px;
+            line-height: 1.3;
+        }
     </style>
 </head>
 <body>
-    <h1>Update Fences</h1>
-    <div id="map"></div>  <!-- Map container -->
+    <div id="map"></div>
 
-    <!-- Leaflet JavaScript -->
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
     <script>
-        // Initialize the map
-        var map = L.map('map').setView([31.898043, 35.204269], 10);  // Center on Palestine
+        // Initialize map
+        var map = L.map('map').setView([31.898043, 35.204269], 10);
 
-        // Add a tile layer (e.g., OpenStreetMap)
+        // Add tiles
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '© OpenStreetMap contributors'
         }).addTo(map);
 
-        // ===== [NEW] Click handler to get coordinates =====
-        map.on('click', function(e) {
-            const { lat, lng } = e.latlng;
-            console.log("Coordinates:", lat, lng);
-            alert(`Latitude: ${lat.toFixed(6)}\nLongitude: ${lng.toFixed(6)}`);
-        });
+        // Smaller icons (20x20px)
+        var icons = {
+            open: L.icon({
+                iconUrl: '{% static "images/open.png" %}',
+                iconSize: [20, 20],       // Reduced from 30x30
+                iconAnchor: [10, 20],     // Adjusted anchor
+                popupAnchor: [0, -20]     // Adjusted popup position
+            }),
+            closed: L.icon({
+                iconUrl: '{% static "images/closed.png" %}',
+                iconSize: [20, 20],
+                iconAnchor: [10, 20],
+                popupAnchor: [0, -20]
+            }),
+            traffic: L.icon({
+                iconUrl: '{% static "images/traffic.png" %}',
+                iconSize: [20, 20],
+                iconAnchor: [10, 20],
+                popupAnchor: [0, -20]
+            })
+        };
 
-        // Load fence data from Django
+        // Load fence data
         var fences = JSON.parse('{{ fences_json|escapejs }}');
 
-        // Define custom icons
-        var greenIcon = L.icon({
-            iconUrl: '{% static "images/open.png" %}',
-            iconSize: [25, 25]
-        });
-        var redIcon = L.icon({
-            iconUrl: '{% static "images/closed.png" %}',
-            iconSize: [25, 25]
-        });
-        var orangeIcon = L.icon({
-            iconUrl: '{% static "images/traffic.png" %}',
-            iconSize: [25, 25]
+        // Add markers with smaller footprint
+        fences.forEach(function(fence) {
+            L.marker([fence.latitude, fence.longitude], {
+                icon: icons[fence.status]
+            }).bindPopup(`
+                <div style="min-width:120px">
+                    <strong>${fence.name}</strong><br>
+                    <small>${fence.status}</small>
+                </div>
+            `, {
+                maxWidth: 200,
+                className: 'compact-popup'
+            }).addTo(map);
         });
 
-        // Add markers to the map
-        fences.forEach(function(fence) {
-            var icon = fence.status === "open" ? greenIcon :
-                       fence.status === "closed" ? redIcon :
-                       orangeIcon;
-            L.marker([fence.latitude, fence.longitude], { icon: icon })
-                .bindPopup(`<b>${fence.name}</b><br>Status: ${fence.status}`)
-                .addTo(map);
-        });
+        // Mobile touch optimization
+        if ('ontouchstart' in window) {
+            map.dragging.enable();
+            map.touchZoom.enable();
+            document.getElementById('map').style.cursor = 'pointer';
+        }
     </script>
 </body>
 </html>

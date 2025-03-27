@@ -22,19 +22,18 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = "django-insecure-zgqjmhs9m7sl+68(vqw4(-r*m598uvc*)!(n^lvt1)12^t597j"
 
-# SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 import os 
 STATIC_URL = '/static/'
 STATICFILES_DIRS = [os.path.join(BASE_DIR, 'static')]
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS =  ['*']
 
 
 # List of keywords for status
 STATUS_KEYWORDS = {
     "open": ["✅","مفتوح", "مفتوحة", "سالك", "سالكة","نظيف","فتحت","سالكه","فاتحات","فتح"],
-    "closed": ["⛔️","❌","مغلق", "مغلقة", "سكر" ,"مسكر","مغلقه"," وقوف تام"," واقف"],
-    "sever_traffic_jam":["ازمة", "مازم", "كثافة سير","ازمه",],
+    "closed": ["🔴","⛔️","❌","مغلق", "مغلقة", "سكر" ,"مسكر","مغلقه"," وقوف تام"," واقف"],
+    "sever_traffic_jam":["ازمة", "مازم", "كثافة سير","ازمه","حاجز","مخصوم","🛑"],
 }
 # Application definition
 
@@ -100,16 +99,16 @@ DATABASES = {
 
 AUTH_PASSWORD_VALIDATORS = [
     {
-        "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator",
+         "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator",
     },
     {
-        "NAME": "django.contrib.auth.password_validation.MinimumLengthValidator",
+         "NAME": "django.contrib.auth.password_validation.MinimumLengthValidator",
     },
     {
-        "NAME": "django.contrib.auth.password_validation.CommonPasswordValidator",
+         "NAME": "django.contrib.auth.password_validation.CommonPasswordValidator",
     },
     {
-        "NAME": "django.contrib.auth.password_validation.NumericPasswordValidator",
+         "NAME": "django.contrib.auth.password_validation.NumericPasswordValidator",
     },
 ]
 
