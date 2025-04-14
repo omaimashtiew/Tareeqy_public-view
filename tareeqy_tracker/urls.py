@@ -1,11 +1,8 @@
 from django.contrib import admin
-from tareeqy import views 
-from django.urls import include, path
-
+from django.urls import path
+from tareeqy import views
 
 urlpatterns = [
     path("admin/", admin.site.urls),
-    path('update_fences/', views.update_fences, name='update_fences'),
-    path('fence_status/', views.fence_status, name='fence_status'), 
-
+    path('Tareeqy/', views.update_fences, name='update_fences'),
 ]

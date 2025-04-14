@@ -14,10 +14,10 @@ from .models import Fence, FenceStatus  # Ensure this import is correct based on
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# API credentials and channel
-API_ID = 28313142
-API_HASH = "1937d577a86353af13fbb92c82f25306"
-CHANNEL_USERNAME = "@ahwalaltreq"
+from django.conf import settings
+API_ID = settings.TELEGRAM_API_ID
+API_HASH = settings.TELEGRAM_API_HASH
+CHANNEL_USERNAME = settings.TELEGRAM_CHANNEL
 
 # Define Palestine time zone
 PALESTINE_TZ = pytz.timezone('Asia/Gaza')
@@ -105,36 +105,42 @@ def update_fence_status(fence, status, message_time):
         logger.error(f"Error updating {fence.name}: {e}")
 
 # Event handler for new messages
-async def process_new_message(event):
-    """Handle incoming messages in real-time."""
-    message = event.message
+# telegram_listener.py
+async def process_new_message(message):
+    """Handle incoming messages."""
     if message and message.text:
-        msg_date = message.date.replace(tzinfo=pytz.UTC).astimezone(PALESTINE_TZ)
-        
-        # Analyze the message and update fence status
-        message_text = message.text
-        status = analyze_message(message_text)
-        
-        if status != "Unknown":
-            fences = await sync_to_async(list)(Fence.objects.all())
-            matching_fences = await sync_to_async(find_fences_in_message)(message_text, fences)
+        try:
+            msg_date = message.date.replace(tzinfo=pytz.UTC).astimezone(PALESTINE_TZ)
+            message_text = message.text
+            status = analyze_message(message_text)
             
-            if matching_fences:
+            if status != "Unknown":
+                fences = await sync_to_async(list)(Fence.objects.all())
+                matching_fences = await sync_to_async(find_fences_in_message)(message_text, fences)
+                
                 for fence in matching_fences:
                     await sync_to_async(update_fence_status)(fence, status, msg_date)
-            else:
-                logger.warning(f"No fence matched for message: {message_text}")
-
+                    logger.info(f"Updated {fence.name} to {status} at {msg_date}")
+        except Exception as e:
+            logger.error(f"Error processing message: {e}")
+            
 # Set up the event handler to listen for new messages
 @client.on(events.NewMessage(chats=CHANNEL_USERNAME))
 async def new_message_handler(event):
     await process_new_message(event)
 
-# Run the client to listen for new messages
+
 async def start_client():
-    await client.start()
-    logger.info("Telegram client started, listening for new messages...")
-    await client.run_until_disconnected()
+    try:
+        await client.start()
+        logger.info("Telegram client started, listening for new messages...")
+        await client.run_until_disconnected()
+    except asyncio.CancelledError:
+        logger.info("Telegram client shutting down...")
+        await client.disconnect()
+    except Exception as e:
+        logger.error(f"Telegram client error: {e}")
+        raise
 
 # Start the client
 if __name__ == "__main__":

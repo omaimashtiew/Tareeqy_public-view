@@ -4,29 +4,29 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Fence Status</title>
-    <script>
-    const map = L.map('map').setView([31.946570, 35.272847], 10);  // Default Palestine view
-
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-
-    // Click handler to get coordinates
-    map.on('click', function(e) {
-        const { lat, lng } = e.latlng;
-        console.log("Coordinates:", lat, lng);  // Log to browser console
-        alert(`Latitude: ${lat}\nLongitude: ${lng}`);  // Show popup
-    });
-
-    // Your existing fence markers...
-</script>
+  <style>
+    #status-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        #status-table th, #status-table td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        #status-table th {
+            background-color: #f2f2f2;
+        }
+    </style>
 </head>
 <body>
     <h1>Fence Status</h1>
-    <table border="1">
+    <table id="status-table">
         <thead>
             <tr>
                 <th>Fence Name</th>
                 <th>Status</th>
-                <th>Message Time</th>
+                <th>Last Update</th>
                 <th>Image</th>
             </tr>
         </thead>
@@ -38,15 +38,11 @@
                 <td>{{ fence.message_time }}</td>
                 <td>
                     {% if fence.image %}
-                        <img src="{{ fence.image }}" alt="{{ fence.status }}" width="50">
+                        <img src="{% static fence.image|cut:'/static/' %}" alt="{{ fence.status }}" width="30">
                     {% else %}
                         No image
                     {% endif %}
                 </td>
-            </tr>
-            {% empty %}
-            <tr>
-                <td colspan="4">No fence status data available.</td>
             </tr>
             {% endfor %}
         </tbody>
