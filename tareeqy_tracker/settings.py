@@ -27,7 +27,9 @@ import os
 STATIC_URL = '/static/'
 STATICFILES_DIRS = [os.path.join(BASE_DIR, 'static')]
 ALLOWED_HOSTS =  ['*']
-
+TELEGRAM_API_ID = 28313142
+TELEGRAM_API_HASH = "1937d577a86353af13fbb92c82f25306"
+TELEGRAM_CHANNEL = "@ahwalaltreq"
 
 # List of keywords for status
 STATUS_KEYWORDS = {

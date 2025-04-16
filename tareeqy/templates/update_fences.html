@@ -4,292 +4,602 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Tareeqy</title>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
-    <link rel="stylesheet" href="https://unpkg.com/leaflet.locatecontrol@0.74.0/dist/L.Control.Locate.min.css" />
+    <title>Tareeqy </title>
+    <link rel="icon" type="image/png" href="/static/images/road1.png" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <style>
-        body, html {
-            margin: 0;
-            padding: 0;
-            height: 100%;
-            overflow: hidden;
-            font-family: Arial, sans-serif;
-        }
-        #map {
-            height: 100vh;
-            width: 100vw;
-        }
-        .leaflet-control-locate a {
-            background-color: #3498db;
-            color: white;
-            border-radius: 4px;
-            font-size: 18px;
-            width: 32px;
-            height: 32px;
-            line-height: 32px;
-            text-align: center;
-        }
-        .leaflet-control-locate.active a {
-            background-color: #e74c3c;
-        }
-        .leaflet-control-locate a .fa-location-crosshairs {
-            display: inline-block;
-            margin-top: 2px;
-        }
-        #location-permission {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            z-index: 1000;
-            background: white;
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 0 15px rgba(0,0,0,0.3);
-            width: 80%;
-            max-width: 300px;
-            text-align: center;
-            display: none;
-        }
-        #location-permission p {
-            margin-bottom: 15px;
-        }
-        #location-permission button {
-            margin: 0 5px;
-            padding: 8px 15px;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-        }
-        #allow-location {
-            background-color: #3498db;
-            color: white;
-        }
-        #deny-location {
-            background-color: #e74c3c;
-            color: white;
-        }
-        #permission-denied-alert {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            z-index: 1000;
-            background: white;
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 0 15px rgba(0,0,0,0.3);
-            width: 80%;
-            max-width: 300px;
-            text-align: center;
-            display: none;
-        }
-    </style>
+    <link rel="stylesheet" href="{% static 'css/styles.css' %}">
+    
 </head>
 <body>
-    <div id="map"></div>
-    <div id="location-permission">
-        <p>Allow Tareeqy to access your location?</p>
-        <button id="allow-location">Allow</button>
-        <button id="deny-location">Deny</button>
-    </div>
-    <div id="permission-denied-alert">
-        <p>Location permission was denied. Would you like to enable it now?</p>
-        <button id="retry-permission">Enable</button>
-        <button id="cancel-permission">Cancel</button>
+    <div class="app-container">
+        <div class="header">
+            <div class="logo">
+                <i class="fas fa-route"></i>
+                Tareeqy
+            </div>
+            <div class="nav-controls">
+                <div class="search-container">
+                    <input type="text" id="search-input" placeholder="Search border...">
+                    <button id="search-btn"><i class="fas fa-search"></i></button>
+                    <div class="search-results"></div>
+                </div>
+                <button class="nav-btn" id="refresh-btn">
+                    <i class="fas fa-sync-alt"></i>
+                    Refresh
+                </button>
+                <button class="nav-btn" id="info-btn">
+                    <i class="fas fa-info-circle"></i>
+                    About
+                </button>
+            </div>
+        </div>
+        
+        <div class="content">
+            <div class="sidebar" id="sidebar">
+                <div class="sidebar-content">
+                    <div class="sidebar-header">Checkpoint Information</div>
+                    
+                    <div class="filter-section">
+                        <h3>Filter By Status</h3>
+                        <div>
+                            <input type="checkbox" id="show-open" checked>
+                            <label for="show-open">Open Checkpoints</label>
+                        </div>
+                        <div>
+                            <input type="checkbox" id="show-traffic" checked>
+                            <label for="show-traffic">Traffic Jams</label>
+                        </div>
+                        <div>
+                            <input type="checkbox" id="show-closed" checked>
+                            <label for="show-closed">Closed Checkpoints</label>
+                        </div>
+                    </div>
+                    
+                    <div class="info-section" style="margin-top: 20px;">
+                        <h3>Recent Updates</h3>
+                        <div id="recent-updates">
+                            <p>Loading recent status updates...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="map"></div>
+            
+            <div class="legend">
+                <div class="legend-title">Checkpoint Status</div>
+                <div class="legend-item">
+                    <span class="legend-color legend-open"></span>
+                    <span>Open</span>
+                </div>
+                <div class="legend-item">
+                    <span class="legend-color legend-traffic"></span>
+                    <span>Traffic</span>
+                </div>
+                <div class="legend-item">
+                    <span class="legend-color legend-closed"></span>
+                    <span>Closed</span>
+                </div>
+            </div>
+            
+            <button class="control-btn" id="toggle-sidebar">
+                <i class="fas fa-bars"></i>
+            </button>
+            
+            <div class="map-controls">
+                <button class="control-btn" id="locate-button">
+                    <i class="fas fa-crosshairs"></i>
+                </button>
+                <button class="control-btn" id="zoom-in">
+                    <i class="fas fa-plus"></i>
+                </button>
+                <button class="control-btn" id="zoom-out">
+                    <i class="fas fa-minus"></i>
+                </button>
+            </div>
+        </div>
     </div>
 
-    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-    <script src="https://unpkg.com/leaflet.locatecontrol@0.74.0/dist/L.Control.Locate.min.js"></script>
-    
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
     <script>
-        // Initialize map
-        var map = L.map('map').setView([31.898043, 35.204269], 14);
-        var userLocation = null;
-        var userLocationMarker = null;
-
-        // Add tiles
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© OpenStreetMap contributors',
-            detectRetina: true
-        }).addTo(map);
-
-        // Custom icons
-        var icons = {
-            open: L.icon({
-                iconUrl: '{% static "images/open.png" %}',
-                iconSize: [25, 25],
-                iconAnchor: [12, 25]
-            }),
-            closed: L.icon({
-                iconUrl: '{% static "images/closed.png" %}',
-                iconSize: [25, 25],
-                iconAnchor: [12, 25]
-            }),
-            traffic: L.icon({
-                iconUrl: '{% static "images/traffic.png" %}',
-                iconSize: [25, 25],
-                iconAnchor: [12, 25]
-            }),
-            // Add new location pin icon
-            userLocation: L.icon({
-                iconUrl: 'https://cdn-icons-png.flaticon.com/512/9088/9088666.png',
-                iconSize: [32, 32],
-                iconAnchor: [16, 32]
-            })
-        };
-
-        // Load fence data
-        try {
-            var fences = JSON.parse('{{ fences_json|escapejs }}');
-            fences.forEach(function(fence) {
-                L.marker([fence.latitude, fence.longitude], {
-                    icon: icons[fence.status] || icons.open
-                }).bindPopup(`<b>${fence.name}</b><br>Status: ${fence.status}`)
-                .addTo(map);
-            });
-        } catch (e) {
-            L.marker([31.898043, 35.204269]).bindPopup('Sample Marker').addTo(map);
-        }
-
-        // Track permission state
-        var permissionGranted = false;
-        var permissionAsked = false;
-
-        // Configure locate control with custom behavior
-        var lc = L.control.locate({
-            position: 'topright',
-            strings: {
-                title: "Show my location",
-                popup: "You are within {distance} meters from this point",
-                outsideMapBoundsMsg: "You seem located outside the boundaries of the map"
-            },
-            locateOptions: {
-                maxZoom: 16,
-                enableHighAccuracy: true,
-                watch: true
-            },
-            icon: 'fas fa-location-crosshairs', // Changed to crosshairs icon
-            iconLoading: 'fa fa-spinner fa-spin',
-            returnToPrevBounds: false,
-            locate: false
-        }).addTo(map);
-
-        // Override the locate button click behavior
-        lc._onClick = function() {
-            if (!permissionAsked) {
-                showPermissionDialog();
-                return;
-            }
+        document.addEventListener('DOMContentLoaded', function() {
+            var map = L.map('map', {
+                zoomControl: false  
+            }).setView([31.9522, 35.2332], 8);
             
-            if (!permissionGranted) {
-                showPermissionDeniedAlert();
-                return;
-            }
-            
-            if (userLocation) {
-                map.setView(userLocation, 16);
-            } else {
-                tryLocate();
-            }
-        };
-
-        // Show initial permission dialog
-        map.whenReady(function() {
-            if (localStorage.getItem('locationPermissionAsked') !== 'true') {
-                showPermissionDialog();
-            } else if (localStorage.getItem('locationPermissionGranted') === 'true') {
-                permissionGranted = true;
-                permissionAsked = true;
-            }
-        });
-
-        // Handle permission buttons
-        document.getElementById('allow-location').addEventListener('click', function() {
-            hidePermissionDialog();
-            localStorage.setItem('locationPermissionAsked', 'true');
-            localStorage.setItem('locationPermissionGranted', 'true');
-            permissionGranted = true;
-            permissionAsked = true;
-            tryLocate();
-        });
-
-        document.getElementById('deny-location').addEventListener('click', function() {
-            hidePermissionDialog();
-            localStorage.setItem('locationPermissionAsked', 'true');
-            localStorage.removeItem('locationPermissionGranted');
-            permissionGranted = false;
-            permissionAsked = true;
-        });
-
-        // Handle retry permission buttons
-        document.getElementById('retry-permission').addEventListener('click', function() {
-            hidePermissionDeniedAlert();
-            showPermissionDialog();
-        });
-
-        document.getElementById('cancel-permission').addEventListener('click', function() {
-            hidePermissionDeniedAlert();
-        });
-
-        // Helper functions
-        function showPermissionDialog() {
-            document.getElementById('location-permission').style.display = 'block';
-        }
-
-        function hidePermissionDialog() {
-            document.getElementById('location-permission').style.display = 'none';
-        }
-
-        function showPermissionDeniedAlert() {
-            document.getElementById('permission-denied-alert').style.display = 'block';
-        }
-
-        function hidePermissionDeniedAlert() {
-            document.getElementById('permission-denied-alert').style.display = 'none';
-        }
-
-        // Function to attempt location
-        function tryLocate() {
-            if (!permissionGranted) return;
-            
-            map.locate({
-                setView: true,
-                maxZoom: 16,
-                enableHighAccuracy: true,
-                timeout: 10000
-            });
-        }
-
-        // Handle location found
-        map.on('locationfound', function(e) {
-            userLocation = e.latlng;
-            
-            // Remove previous marker if exists
-            if (userLocationMarker) {
-                map.removeLayer(userLocationMarker);
-            }
-            
-            // Add new marker with the location pin icon
-            userLocationMarker = L.marker(e.latlng, {
-                icon: icons.userLocation
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors',
+                detectRetina: true
             }).addTo(map);
             
-            var radius = e.accuracy / 2;
-            L.circle(e.latlng, radius, {
-                color: '#3498db',
-                fillColor: '#2980b9',
-                fillOpacity: 0.2,
-                weight: 2
-            }).addTo(map).bindPopup("Home").openPopup();
-        });
+            var userLocation = null;
+            var userLocationMarker = null;
+            var accuracyCircle = null;
+            var markerLayers = {
+                open: L.layerGroup().addTo(map),
+                closed: L.layerGroup().addTo(map),
+                sever_traffic_jam: L.layerGroup().addTo(map)
+            };
+            
+            var icons = {
+                open: L.divIcon({
+                    html: '<div style="background-color: #28a745; width: 14px; height: 14px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 5px rgba(0,0,0,0.3);"></div>',
+                    className: 'checkpoint-marker',
+                    iconSize: [20, 20],
+                    iconAnchor: [10, 10]
+                }),
+                closed: L.divIcon({
+                    html: '<div style="background-color: #dc3545; width: 14px; height: 14px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 5px rgba(0,0,0,0.3);"></div>',
+                    className: 'checkpoint-marker',
+                    iconSize: [20, 20],
+                    iconAnchor: [10, 10]
+                }),
+                sever_traffic_jam: L.divIcon({
+                    html: '<div style="background-color: #ffc107; width: 14px; height: 14px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 5px rgba(0,0,0,0.3);"></div>',
+                    className: 'checkpoint-marker',
+                    iconSize: [20, 20],
+                    iconAnchor: [10, 10]
+                }),
+                userLocation: L.divIcon({
+                    html: '<div style="background-color: #3274d9; width: 14px; height: 14px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 5px rgba(0,0,0,0.3);"></div>',
+                    className: 'user-marker',
+                    iconSize: [20, 20],
+                    iconAnchor: [10, 10]
+                })
+            };
+            
+            var statusStyles = {
+                open: {
+                    color: '#28a745',
+                    icon: 'fa-check-circle',
+                    label: 'Open',
+                    headerColor: '#28a745'
+                },
+                closed: {
+                    color: '#dc3545',
+                    icon: 'fa-times-circle',
+                    label: 'Closed',
+                    headerColor: '#dc3545'
+                },
+                sever_traffic_jam: {
+                    color: '#ffc107',
+                    icon: 'fa-exclamation-triangle',
+                    label: 'Severe Traffic',
+                    headerColor: '#ffc107'
+                }
+            };
+            
+            // Replace your current search-related functions with these improved versions
 
-        // Handle location error
-        map.on('locationerror', function(e) {
-            if (!permissionGranted) {
-                showPermissionDeniedAlert();
+// Initialize variables for search functionality
+var allMarkers = [];
+var checkpointData = []; // Store checkpoint data for better searching
+
+try {
+    var fences = JSON.parse('{{ fences_json|escapejs }}');
+    var recentUpdates = [];
+    
+    fences.forEach(function(fence, index) {
+        if (icons[fence.status]) {
+            var popupContent = createPopupContent(fence);
+            
+            var marker = L.marker([fence.latitude, fence.longitude], {
+                icon: icons[fence.status]
+            });
+            
+            marker.bindPopup(popupContent, {
+                className: 'custom-popup',
+                maxWidth: 300
+            });
+            
+            markerLayers[fence.status].addTo(map);
+            marker.addTo(markerLayers[fence.status]);
+            
+            // Store the checkpoint data with the marker for better searching
+            checkpointData.push({
+                name: fence.name,
+                marker: marker,
+                latitude: fence.latitude,
+                longitude: fence.longitude,
+                status: fence.status,
+                index: index
+            });
+            
+            recentUpdates.push({
+                name: fence.name,
+                status: fence.status,
+                time: fence.message_time
+            });
+        }
+    });
+    
+    // Collect all markers for search functionality
+    allMarkers = [...markerLayers.open.getLayers(), 
+                 ...markerLayers.closed.getLayers(), 
+                 ...markerLayers.sever_traffic_jam.getLayers()];
+    
+    updateRecentList(recentUpdates.slice(0, 5));
+    
+    if (fences.length > 0) {
+        var markerGroup = new L.featureGroup(allMarkers);
+        map.fitBounds(markerGroup.getBounds().pad(0.2));
+    }
+} catch (e) {
+    console.error("Error loading fence data:", e);
+    document.getElementById('recent-updates').innerHTML = 
+        '<p class="error">Error loading checkpoint data. Please refresh the page.</p>';
+}
+
+// Search functionality
+document.getElementById('search-btn').addEventListener('click', performSearch);
+document.getElementById('search-input').addEventListener('input', function(e) {
+    if (e.target.value.length > 0) {
+        performSearch();
+    } else {
+        clearSearchResults();
+    }
+});
+document.getElementById('search-input').addEventListener('keyup', function(e) {
+    if (e.key === 'Enter') {
+        performSearch();
+    }
+});
+
+function performSearch() {
+    const searchTerm = document.getElementById('search-input').value.trim();
+    if (!searchTerm) {
+        clearSearchResults();
+        return;
+    }
+    
+    const searchTermLower = searchTerm.toLowerCase();
+    const searchResultsContainer = document.querySelector('.search-results');
+    clearSearchResults();
+    
+    // Search directly in the checkpointData array which has the original names
+    const results = checkpointData.filter(checkpoint => 
+        checkpoint.name.toLowerCase().includes(searchTermLower)
+    );
+    
+    if (results.length === 0) {
+        const noResults = document.createElement('div');
+        noResults.className = 'no-results';
+        noResults.textContent = 'No checkpoints found';
+        searchResultsContainer.appendChild(noResults);
+    } else {
+        results.forEach(result => {
+            const resultItem = document.createElement('div');
+            resultItem.className = 'search-result-item';
+            
+            // Create a container for the status dot and name to ensure proper layout
+            const contentContainer = document.createElement('div');
+            contentContainer.style.cssText = `
+                display: flex;
+                align-items: center;
+                width: 100%;
+                direction: ${isRTL(result.name) ? 'rtl' : 'ltr'};
+            `;
+            
+            // Add status indicator with colored dot
+            const statusColor = statusStyles[result.status].color;
+            const statusDot = document.createElement('span');
+            statusDot.style.cssText = `
+                display: inline-block;
+                flex-shrink: 0;
+                width: 10px;
+                height: 10px;
+                background-color: ${statusColor};
+                border-radius: 50%;
+                margin: 0 8px;
+            `;
+            
+            // Create a text container for the name
+            const nameContainer = document.createElement('span');
+            nameContainer.style.cssText = `
+                flex-grow: 1;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            `;
+            nameContainer.textContent = result.name;
+            
+            // Assemble the elements
+            contentContainer.appendChild(statusDot);
+            contentContainer.appendChild(nameContainer);
+            resultItem.appendChild(contentContainer);
+            
+            resultItem.addEventListener('click', () => {
+                map.setView([result.latitude, result.longitude], 14);
+                result.marker.openPopup();
+                clearSearchResults();
+                document.getElementById('search-input').value = '';
+            });
+            searchResultsContainer.appendChild(resultItem);
+        });
+    }
+    
+    searchResultsContainer.style.display = 'block';
+}
+
+// Helper function to detect if text is RTL (Right-to-Left)
+function isRTL(text) {
+    // Check for Arabic, Hebrew, or other RTL language characters
+    const rtlChars = /[\u0591-\u07FF\u200F\u202B\u202E\uFB1D-\uFDFD\uFE70-\uFEFC]/;
+    return rtlChars.test(text);
+}
+
+function clearSearchResults() {
+    const searchResultsContainer = document.querySelector('.search-results');
+    searchResultsContainer.innerHTML = '';
+    searchResultsContainer.style.display = 'none';
+}
+
+// Add this CSS to your styles to ensure proper RTL support
+document.addEventListener('DOMContentLoaded', function() {
+    const styleElement = document.createElement('style');
+    styleElement.textContent = `
+        .search-result-item {
+            padding: 8px 12px;
+            cursor: pointer;
+            border-bottom: 1px solid #eee;
+            overflow: hidden;
+        }
+
+        #search-input {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px 0 0 4px;
+            width: 200px;
+            font-size: 14px;
+        }
+
+        .search-results {
+            min-width: 220px;
+        }
+    `;
+    document.head.appendChild(styleElement);
+});
+            
+            function locateUser() {
+                map.locate({ 
+                    setView: true, 
+                    maxZoom: 16, 
+                    enableHighAccuracy: true,
+                    timeout: 10000,      
+                    maximumAge: 30000    
+                });
+                
+                const loadingIndicator = document.createElement('div');
+                loadingIndicator.id = 'location-loading';
+                loadingIndicator.style.cssText = 'position:absolute;top:80px;right:10px;background:white;padding:8px 12px;border-radius:4px;box-shadow:0 2px 5px rgba(0,0,0,0.2);z-index:1000;';
+                loadingIndicator.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Finding your location...';
+                document.querySelector('.content').appendChild(loadingIndicator);
+                
+                setTimeout(() => {
+                    if (document.getElementById('location-loading')) {
+                        document.getElementById('location-loading').remove();
+                    }
+                }, 1000);
             }
+            
+            map.on('locationerror', function(e) {
+                console.error("Location error:", e.message);
+                
+                if (document.getElementById('location-loading')) {
+                    document.getElementById('location-loading').remove();
+                }
+                
+                const errorTypes = {
+                    1: "Location access denied. Please enable location services in your browser settings.",
+                    2: "Location unavailable. Please try again later.",
+                    3: "Location request timed out. Check your connection and try again.",
+                    4: "Unknown location error occurred."
+                };
+                
+                const errorMessage = errorTypes[e.code] || errorTypes[4];
+                
+                const errorAlert = document.createElement('div');
+                errorAlert.id = 'location-error';
+                errorAlert.style.cssText = 'position:absolute;top:80px;right:10px;background:#ffebee;border-left:4px solid #f44336;padding:10px;box-shadow:0 2px 5px rgba(0,0,0,0.2);z-index:1000;max-width:250px;';
+                errorAlert.innerHTML = `<strong>Location Error</strong><br>${errorMessage}<br><button id="dismiss-error" style="margin-top:5px;padding:3px 8px;background:#f44336;color:white;border:none;border-radius:3px;cursor:pointer;">Dismiss</button>`;
+                document.querySelector('.content').appendChild(errorAlert);
+                
+                document.getElementById('dismiss-error').addEventListener('click', function() {
+                    document.getElementById('location-error').remove();
+                });
+            });
+            
+            function createPopupContent(fence) {
+                var style = statusStyles[fence.status];
+                var headerColor = style.headerColor;
+                var statusText = style.label;
+                var statusIcon = style.icon;
+                
+                return `
+                    <div>
+                        <div class="popup-header" style="background-color: ${headerColor};">
+                            ${fence.name}
+                        </div>
+                        <div class="popup-content">
+                            <div class="popup-item">
+                                <span class="popup-icon"><i class="fas ${statusIcon}"></i></span>
+                                <span>Status: <strong>${statusText}</strong></span>
+                            </div>
+                            <div class="popup-item">
+                                <span class="popup-icon"><i class="fas fa-clock"></i></span>
+                                <span>Updated: ${fence.message_time}</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            function updateRecentList(updates) {
+                if (!updates || updates.length === 0) {
+                    document.getElementById('recent-updates').innerHTML = 
+                        '<p>No recent updates available.</p>';
+                    return;
+                }
+                
+                var html = '';
+                updates.forEach(update => {
+                    var style = statusStyles[update.status];
+                    html += `
+                        <div style="margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid #eee;">
+                            <div><strong>${update.name}</strong></div>
+                            <div style="color: ${style.color}; margin: 3px 0;">
+                                <i class="fas ${style.icon}"></i> ${style.label}
+                            </div>
+                            <div style="font-size: 12px; color: #777;">
+                                <i class="fas fa-clock"></i> ${update.time}
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                document.getElementById('recent-updates').innerHTML = html;
+            }
+            
+            document.getElementById('locate-button').addEventListener('click', locateUser);
+            document.getElementById('zoom-in').addEventListener('click', function() {
+                map.zoomIn();
+            });
+            document.getElementById('zoom-out').addEventListener('click', function() {
+                map.zoomOut();
+            });
+            
+            document.getElementById('toggle-sidebar').addEventListener('click', function() {
+                document.getElementById('sidebar').classList.toggle('active');
+            });
+            
+            document.getElementById('show-open').addEventListener('change', function(e) {
+                if (e.target.checked) {
+                    markerLayers.open.addTo(map);
+                } else {
+                    map.removeLayer(markerLayers.open);
+                }
+            });
+            
+            document.getElementById('show-traffic').addEventListener('change', function(e) {
+                if (e.target.checked) {
+                    markerLayers.sever_traffic_jam.addTo(map);
+                } else {
+                    map.removeLayer(markerLayers.sever_traffic_jam);
+                }
+            });
+            
+            document.getElementById('show-closed').addEventListener('change', function(e) {
+                if (e.target.checked) {
+                    markerLayers.closed.addTo(map);
+                } else {
+                    map.removeLayer(markerLayers.closed);
+                }
+            });
+            
+            document.getElementById('refresh-btn').addEventListener('click', function() {
+                const refreshBtn = document.getElementById('refresh-btn');
+                const originalContent = refreshBtn.innerHTML;
+                refreshBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Refreshing...';
+                refreshBtn.disabled = true;
+                
+                const refreshIndicator = document.createElement('div');
+                refreshIndicator.id = 'refresh-indicator';
+                refreshIndicator.style.cssText = 'position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(255,255,255,0.8);padding:15px;border-radius:50%;box-shadow:0 2px 10px rgba(0,0,0,0.2);z-index:1000;';
+                refreshIndicator.innerHTML = '<i class="fas fa-sync-alt fa-spin fa-2x" style="color:var(--primary-color);"></i>';
+                document.querySelector('.content').appendChild(refreshIndicator);
+                
+                fetch(window.location.href)
+                    .then(response => response.text())
+                    .then(html => {
+                        const parser = new DOMParser();
+                        const doc = parser.parseFromString(html, 'text/html');
+                        const scriptContent = Array.from(doc.querySelectorAll('script'))
+                            .find(script => script.textContent.includes('var fences = JSON.parse'))
+                            .textContent;
+                        
+                        const jsonMatch = scriptContent.match(/JSON\.parse\('(.+?)'\)/);
+                        if (jsonMatch && jsonMatch[1]) {
+                            try {
+                                const updatedFences = JSON.parse(jsonMatch[1].replace(/\\'/g, "'").replace(/\\"/g, '"'));
+                                
+                                for (const status in markerLayers) {
+                                    markerLayers[status].clearLayers();
+                                }
+                                
+                                const recentUpdates = [];
+                                updatedFences.forEach(function(fence) {
+                                    if (icons[fence.status]) {
+                                        const popupContent = createPopupContent(fence);
+                                        
+                                        const marker = L.marker([fence.latitude, fence.longitude], {
+                                            icon: icons[fence.status]
+                                        });
+                                        
+                                        marker.bindPopup(popupContent, {
+                                            className: 'custom-popup',
+                                            maxWidth: 300
+                                        });
+                                        
+                                        marker.addTo(markerLayers[fence.status]);
+                                        
+                                        recentUpdates.push({
+                                            name: fence.name,
+                                            status: fence.status,
+                                            time: fence.message_time
+                                        });
+                                    }
+                                });
+                                
+                                updateRecentList(recentUpdates.slice(0, 5));
+                                
+                                const successMessage = document.createElement('div');
+                                successMessage.id = 'refresh-success';
+                                successMessage.style.cssText = 'position:absolute;top:80px;right:10px;background:#e8f5e9;border-left:4px solid #4caf50;padding:10px;box-shadow:0 2px 5px rgba(0,0,0,0.2);z-index:1000;max-width:250px;';
+                                successMessage.innerHTML = '<strong>Data Updated</strong><br>Checkpoint information has been refreshed.';
+                                document.querySelector('.content').appendChild(successMessage);
+                                
+                                setTimeout(() => {
+                                    if (document.getElementById('refresh-success')) {
+                                        document.getElementById('refresh-success').remove();
+                                    }
+                                }, 3000);
+                                
+                            } catch (e) {
+                                console.error("Error processing updated data:", e);
+                                showRefreshError("Could not process the updated data.");
+                            }
+                        } else {
+                            showRefreshError("Could not find updated checkpoint data.");
+                        }
+                    })
+                    .catch(error => {
+                        console.error("Refresh error:", error);
+                        showRefreshError("Connection error. Please check your internet connection.");
+                    })
+                    .finally(() => {
+                        refreshBtn.innerHTML = originalContent;
+                        refreshBtn.disabled = false;
+                        
+                        if (document.getElementById('refresh-indicator')) {
+                            document.getElementById('refresh-indicator').remove();
+                        }
+                    });
+            });
+            
+            function showRefreshError(message) {
+                const errorAlert = document.createElement('div');
+                errorAlert.id = 'refresh-error';
+                errorAlert.style.cssText = 'position:absolute;top:80px;right:10px;background:#ffebee;border-left:4px solid #f44336;padding:10px;box-shadow:0 2px 5px rgba(0,0,0,0.2);z-index:1000;max-width:250px;';
+                errorAlert.innerHTML = `<strong>Refresh Error</strong><br>${message}<br><button id="dismiss-refresh-error" style="margin-top:5px;padding:3px 8px;background:#f44336;color:white;border:none;border-radius:3px;cursor:pointer;">Dismiss</button>`;
+                document.querySelector('.content').appendChild(errorAlert);
+                
+                document.getElementById('dismiss-refresh-error').addEventListener('click', function() {
+                    document.getElementById('refresh-error').remove();
+                });
+            }
+            
+            locateUser();
         });
     </script>
 </body>
