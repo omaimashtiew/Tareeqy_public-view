@@ -1,5 +1,6 @@
 # ai_prediction/data_loader.py
 
+
 import os
 import django
 import pandas as pd
