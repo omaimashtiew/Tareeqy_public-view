@@ -50,17 +50,123 @@
                 <button class="nav-btn" id="info-btn"><i class="fas fa-info-circle"></i> About</button>
             </div>
         </div>
+        
         <div class="content">
-            <div class="sidebar" id="sidebar"><div class="sidebar-content"><div class="sidebar-header">Checkpoint Information</div><div class="filter-section"><h3>Filter By Status</h3><div><input type="checkbox" id="show-open" checked><label for="show-open">Open</label></div><div><input type="checkbox" id="show-traffic" checked><label for="show-traffic">Traffic Jams</label></div><div><input type="checkbox" id="show-closed" checked><label for="show-closed">Closed</label></div></div><div class="info-section" style="margin-top: 20px;"><h3>Recent Updates</h3><div id="recent-updates"><p>Loading recent status updates...</p></div></div></div></div>
+        
+            <div class="sidebar" id="sidebar"><div class="sidebar-content"><div class="sidebar-header">Checkpoint Information  <div style="padding: 1rem; border-bottom: 1px solid #ccc;">
+                <h3>🔍 Search by City</h3>
+                <input type="text" id="city-search" placeholder="Type city name..." class="form-control" style="width: 100%; padding: 8px; margin-bottom: 10px;" />
+                <div id="search-results" style="max-height: 400px; overflow-y: auto;"></div>
+            </div></div><div class="filter-section"><h3>Filter By Status</h3><div><input type="checkbox" id="show-open" checked><label for="show-open">Open</label></div><div><input type="checkbox" id="show-traffic" checked><label for="show-traffic">Traffic Jams</label></div><div><input type="checkbox" id="show-closed" checked><label for="show-closed">Closed</label></div></div><div class="info-section" style="margin-top: 20px;"><h3>Recent Updates</h3><div id="recent-updates"><p>Loading recent status updates...</p></div></div></div></div>
             <div id="map"></div>
             <div class="legend"><div class="legend-title">Status</div><div class="legend-item"><span class="legend-color legend-open"></span><span>Open</span></div><div class="legend-item"><span class="legend-color legend-traffic"></span><span>Traffic</span></div><div class="legend-item"><span class="legend-color legend-closed"></span><span>Closed</span></div></div>
             <button class="control-btn" id="toggle-sidebar"><i class="fas fa-bars"></i></button>
             <div class="map-controls"><button class="control-btn" id="locate-button"><i class="fas fa-crosshairs"></i></button><button class="control-btn" id="zoom-in"><i class="fas fa-plus"></i></button><button class="control-btn" id="zoom-out"><i class="fas fa-minus"></i></button></div>
         </div>
+        
     </div>
 
     <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
     <script>
+       
+       document.getElementById('city-search').addEventListener('input', function () {
+    const query = this.value.trim();
+    const resultsContainer = document.getElementById('search-results');
+
+    if (query.length < 2) {
+        resultsContainer.innerHTML = '';
+        return;
+    }
+
+    fetch(`/search-city?q=${encodeURIComponent(query)}`)
+        .then(response => response.json())
+        .then(data => {
+            renderCitySearchResults(data);
+        })
+        .catch(error => {
+            console.error('Error during city search:', error);
+            resultsContainer.innerHTML = '<p style="padding: 8px; color: #dc3545; text-align: center;">Error loading results</p>';
+        });
+});
+
+function renderCitySearchResults(results) {
+    const container = document.getElementById('search-results');
+    container.innerHTML = '';
+
+    if (!results || results.length === 0) {
+        container.innerHTML = '<p style="padding: 8px; color: #6c757d; text-align: center;">No results found</p>';
+        return;
+    }
+
+    results.forEach(item => {
+        const resultDiv = document.createElement('div');
+        resultDiv.className = 'search-result-card';
+        resultDiv.style = `
+            padding: 12px;
+            margin-bottom: 8px;
+            border-radius: 4px;
+            background: white;
+            border: 1px solid #e0e0e0;
+            text-align: right;
+            direction: rtl;
+        `;
+
+        // Status color and icon
+        const status = item.status || 'unknown';
+        const statusColor = 
+            status.toLowerCase() === 'open' ? '#28a745' :
+            status.toLowerCase() === 'closed' ? '#dc3545' :
+            '#6c757d'; // default color
+        
+        const statusIcon = status.toLowerCase() === 'open' ? '✓ ' : '✗ ';
+
+        // Format time
+        const formattedTime = formatTime(item.message_time);
+
+        resultDiv.innerHTML = `
+            <div style="font-weight: bold; font-size: 1.1rem; margin-bottom: 4px;">${item.name}</div>
+            <div style="font-size: 0.9rem; color: #6c757d; margin-bottom: 8px;">${item.city}</div>
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span style="color: ${statusColor}; font-size: 0.9rem;">
+                    ${statusIcon}${status}
+                </span>
+                <span style="font-size: 0.8rem; color: #6c757d;">
+                    ${formattedTime}
+                </span>
+            </div>
+        `;
+
+        container.appendChild(resultDiv);
+    });
+}
+
+function formatTime(isoString) {
+    if (!isoString) return 'No update time';
+    
+    try {
+        const date = new Date(isoString);
+        const now = new Date();
+        const diffInDays = Math.floor((now - date) / (1000 * 60 * 60 * 24));
+        
+        if (diffInDays === 0) {
+            // Today - show time only
+            return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        } else if (diffInDays === 1) {
+            // Yesterday
+            return 'Yesterday';
+        } else {
+            // Older dates
+            return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+        }
+    } catch (e) {
+        console.error('Error formatting date:', e);
+        return '';
+    }
+}
+
+
+
+
         // Paste the ENTIRE <script> block from the previous complete HTML response here
         // (Starting from document.addEventListener('DOMContentLoaded', function() { ... down to the end)
         document.addEventListener('DOMContentLoaded', function() {
@@ -204,3 +310,4 @@
     </script>
 </body>
 </html>
+

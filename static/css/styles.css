@@ -256,68 +256,28 @@
 
 
 
-
-        .search-container {
-            display: flex;
-            align-items: center;
-            margin-right: 10px;
-            position: relative;
+        #search-results {
+            max-height: 400px;
+            overflow-y: auto;
+            padding: 8px;
+            background: #f8f9fa;
+            border-radius: 4px;
         }
         
-        #search-input {
-            padding: 8px 12px;
-            border: 1px solid #ddd;
-            border-radius: 4px 0 0 4px;
-            width: 200px;
-            font-size: 14px;
+        .search-result-card {
+            transition: background-color 0.2s;
         }
         
-        #search-btn {
-            padding: 8px 12px;
-            background-color: #190686;
-            color: rgb(77, 76, 76);
-            border: none;
-            border-radius: 0 4px 4px 0;
-            cursor: pointer;
+        .search-result-card:hover {
+            background-color: #f0f0f0;
         }
         
-        #search-btn:hover {
-            background-color: #13025f;
-        }
-        
-        .search-results {
-            position: absolute;
-            top: 100%;
-            left: 0;
-            right: 0;
-            background: rgb(255, 255, 255);
+        #city-search {
+            text-align: right;
+            direction: rtl;
+            padding: 10px;
             border: 1px solid #ddd;
             border-radius: 4px;
-            max-height: 300px;
-            overflow-y: auto;
-            z-index: 1000;
-            display: none;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-            color: rgb(0, 0, 0);
-
-        }
-        
-        .search-result-item {
-            padding: 8px 12px;
-            cursor: pointer;
-            border-bottom: 1px solid #eee;
-        }
-        
-        .search-result-item:last-child {
-            border-bottom: none;
-        }
-        
-        .search-result-item:hover {
-            background-color: #f8f9fa;
-        }
-        
-        .no-results {
-            padding: 8px 12px;
-            color: #666;
-            font-style: italic;
+            width: 100%;
+            margin-bottom: 12px;
         }

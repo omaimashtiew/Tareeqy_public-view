@@ -15,4 +15,5 @@ urlpatterns = [
     # Path for the prediction API endpoint
     # This handles http://127.0.0.1:8000/api/get_predictions/
     path('api/get_predictions/', views.get_predictions_for_location, name='get_fence_predictions'),
+     path('search-city', views.search_city, name='search_city'),
 ]

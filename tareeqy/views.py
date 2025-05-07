@@ -32,7 +32,11 @@ except ImportError as e:
         return {'success': False, 'error': 'AI predictor module not available.'}
 # --- End AI Imports ---
 
+    
 
+
+
+    
 # --- View for the Main Map Page ---
 # This function renders your HTML template
 def map_view(request):
@@ -70,6 +74,40 @@ def map_view(request):
         # *** ENSURE TEMPLATE PATH IS 'tareeqy/update_fences.html' ***
         return render(request, 'update_fences.html', context, status=500)
 
+# search function
+
+def search_city(request):
+    """AJAX endpoint to search for fences by city name, including latest status."""
+    try:
+        query = request.GET.get('q', '').strip()
+        if not query:
+            return JsonResponse([], safe=False)
+
+        latest_status = FenceStatus.objects.filter(fence_id=OuterRef('pk')).order_by('-message_time')
+
+        fences = Fence.objects.filter(city__icontains=query).annotate(
+            latest_status=Subquery(latest_status.values('status')[:1]),
+            latest_time=Subquery(latest_status.values('message_time')[:1]),
+            latest_image=Subquery(latest_status.values('image')[:1])
+        ).values('id', 'name', 'city', 'latest_status', 'latest_time', 'latest_image')[:10]
+
+        results = []
+        for fence in fences:
+            results.append({
+                'id': fence['id'],
+                'name': fence['name'],
+                'city': fence['city'],
+                'status': fence['latest_status'] or 'unknown',
+                'message_time': fence['latest_time'].isoformat() if fence['latest_time'] else None,
+                'image': fence['latest_image']
+            })
+
+        return JsonResponse(results, safe=False)
+
+    except Exception as e:
+        print(f"ERROR in search_city: {e}")
+        traceback.print_exc()
+        return JsonResponse({'error': 'Search failed.'}, status=500)
 
 # --- Helper function for distance (Haversine) ---
 def haversine(lat1, lon1, lat2, lon2):
@@ -133,3 +171,5 @@ def get_predictions_for_location(request):
         print(f"SERVER ERROR in get_predictions_for_location: {e}")
         traceback.print_exc()
         return JsonResponse({'error': 'Internal server error.'}, status=500)
+    
+    
