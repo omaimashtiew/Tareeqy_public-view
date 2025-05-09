@@ -8,7 +8,7 @@ urlpatterns = [
     # --- THIS IS THE CORRECT WAY ---
     # Include the URL patterns from the 'tareeqy' app.
     # This makes URLs defined in 'tareeqy/urls.py' accessible from the root ('')
-    path('', include('tareeqy.urls', namespace='tareeqy')),
+    path('Tareeqy/', include('tareeqy.urls', namespace='tareeqy')),
     # --- END CORRECT WAY ---
 
     # --- REMOVE THE OLD, INCORRECT PATH ---
