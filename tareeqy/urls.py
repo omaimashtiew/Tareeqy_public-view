@@ -3,6 +3,8 @@
 from django.urls import path
 # Import views from the current app directory (tareeqy/views.py)
 from . import views
+from django.contrib import admin
+
 
 app_name = 'tareeqy'
 
@@ -11,6 +13,7 @@ urlpatterns = [
     # Since it's included at '', this handles http://127.0.0.1:8000/
     # Make sure 'views.map_view' exists in views.py
     path('', views.map_view, name='map_view'),
+    path('admin/', admin.site.urls),
 
     # Path for the prediction API endpoint
     # This handles http://127.0.0.1:8000/api/get_predictions/
