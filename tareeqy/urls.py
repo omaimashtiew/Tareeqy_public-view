@@ -1,22 +1,15 @@
 # tareeqy/urls.py
-
 from django.urls import path
-# Import views from the current app directory (tareeqy/views.py)
 from . import views
-from django.contrib import admin
+from django.shortcuts import redirect
 
-
-app_name = 'tareeqy'
-
+app_name = 'tareeqy_app' # MUST MATCH an eventual namespace
+ 
 urlpatterns = [
-    # Path for the main map page view.
-    # Since it's included at '', this handles http://127.0.0.1:8000/
-    # Make sure 'views.map_view' exists in views.py
-    path('', views.map_view, name='map_view'),
-    path('admin/', admin.site.urls),
-
-    # Path for the prediction API endpoint
-    # This handles http://127.0.0.1:8000/api/get_predictions/
-    path('api/get_predictions/', views.get_predictions_for_location, name='get_fence_predictions'),
-     path('search-city', views.search_city, name='search_city'),
+    path('welcome/', views.welcome_view, name='welcome_page'),
+    path('map/', views.map_view, name='map_page'), # This name is used by {% url %}
+    path('', lambda request: redirect('tareeqy_app:welcome_page', permanent=False), name='app_root_redirect'),
+    # ... your API URLs ...
+    path('api/get_predictions/', views.get_predictions_for_location, name='api_get_predictions'),
+    path('api/search_city_or_fence/', views.search_city_or_fence, name='api_search_city_or_fence'),
 ]

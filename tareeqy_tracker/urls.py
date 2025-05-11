@@ -1,17 +1,18 @@
+# tareeqy_tracker/urls.py
 
 from django.contrib import admin
-from django.urls import path, include  # *** IMPORT include ***
+from django.urls import path, include
+from django.shortcuts import redirect
 
 urlpatterns = [
     path("admin/", admin.site.urls),
 
-    # --- THIS IS THE CORRECT WAY ---
-    # Include the URL patterns from the 'tareeqy' app.
-    # This makes URLs defined in 'tareeqy/urls.py' accessible from the root ('')
-    path('Tareeqy/', include('tareeqy.urls', namespace='tareeqy')),
-    # --- END CORRECT WAY ---
+    # 1. Redirect the absolute root of your site ('/') to the app's welcome page.
+    #    This uses the namespace 'tareeqy_app' and the name 'welcome_page' from your app's urls.py.
+    path('', lambda request: redirect('tareeqy_app:welcome_page', permanent=False)),
 
-    # --- REMOVE THE OLD, INCORRECT PATH ---
-    # path('Tareeqy/', views.update_fences, name='update_fences'), # DELETE THIS LINE
-    # REMOVE "from tareeqy import views" from the top if it's there.
-]
+    # 2. Include your 'tareeqy' app's URLs under a prefix, e.g., '/app/'.
+    #    This means all URLs from 'tareeqy.urls' will start with '/app/'.
+    #    The namespace 'tareeqy_app' is crucial for using {% url %} tags.
+    path('app/', include('tareeqy.urls', namespace='tareeqy_app')),
+] 
