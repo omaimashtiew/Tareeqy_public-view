@@ -33,8 +33,8 @@ TARGET_KEYWORDS = [
     "الزعيم", "حواره", "الباذان", "النبي صالح", "حارس", "بديا", "الساوية"
 ]
 
-start_date = timezone.make_aware(datetime(2025, 5, 13))
-end_date = timezone.make_aware(datetime(2025, 5, 12))
+start_date = timezone.make_aware(datetime(2025, 5, 14))
+end_date = timezone.make_aware(datetime(2025, 5, 14))
 
 
 def classify_status(text):
@@ -80,7 +80,7 @@ def save_fence_status(fence_id, status, message_time, image):
             message_time=message_time,
             image=image
         )
-        #print(f"✔️ تم حفظ حالة '{status}' لحاجز {fence_id} في {message_time}")
+        print(f"✔️ تم حفظ حالة '{status}' لحاجز {fence_id} في {message_time}")
     except Exception as e:
         print(f"⚠️ خطأ أثناء الحفظ: {e}")
 
