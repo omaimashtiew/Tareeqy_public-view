@@ -337,6 +337,7 @@ html, body {
     .footer-nav .nav-item i { font-size: calc(var(--base-font-size) * 1.4); } /* Slightly larger footer icons */
 }
 
+
 /* Tablet and Mobile: Sidebar is an overlay */
 @media (max-width: 991.98px) {
     .status-legend { right: 15px; left: auto; } 
