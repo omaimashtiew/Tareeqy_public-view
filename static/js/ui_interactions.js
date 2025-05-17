@@ -1,56 +1,75 @@
 // static/js/ui_interactions.js
-// Handles general UI interactions like sidebar, filters, zoom, toasts.
 
 const sidebar = document.getElementById('sidebar');
-const contentWrapper = document.getElementById('content-wrapper'); // For desktop layout adjustments
+const contentWrapper = document.getElementById('content-wrapper'); 
 const statusLegend = document.getElementById('status-legend');
-
-let activeStatusFilters = ['open', 'sever_traffic_jam', 'closed']; // Default filters
+let activeStatusFilters = ['open', 'sever_traffic_jam', 'closed', 'unknown']; 
 
 function setupUIEventListeners() {
-    // Sidebar toggle
-    document.getElementById('footer-toggle-sidebar-btn').addEventListener('click', toggleSidebar);
-    document.getElementById('close-sidebar-btn').addEventListener('click', toggleSidebar);
+    const toggleSidebarBtn = document.getElementById('footer-toggle-sidebar-btn');
+    const closeSidebarBtn = document.getElementById('close-sidebar-btn'); // Mobile only
 
-    // Zoom controls
-    document.getElementById('zoom-in-btn').addEventListener('click', () => map.zoomIn());
-    document.getElementById('zoom-out-btn').addEventListener('click', () => map.zoomOut());
+    if (toggleSidebarBtn) {
+        toggleSidebarBtn.addEventListener('click', toggleSidebar);
+    }
+    if (closeSidebarBtn && window.innerWidth < 992) { // Only attach for mobile view initially
+        closeSidebarBtn.addEventListener('click', toggleSidebar);
+    }
 
-    // Locate user button
-    document.getElementById('locate-user-btn').addEventListener('click', () => requestUserLocation(true)); // true for manual retry
-    document.getElementById('retry-location-modal-btn').addEventListener('click', () => {
-        bootstrap.Modal.getInstance(document.getElementById('location-error-modal')).hide();
-        requestUserLocation(true); // true for manual retry
-    });
+    const zoomInBtn = document.getElementById('zoom-in-btn');
+    const zoomOutBtn = document.getElementById('zoom-out-btn');
+    if (zoomInBtn) zoomInBtn.addEventListener('click', () => map.zoomIn());
+    if (zoomOutBtn) zoomOutBtn.addEventListener('click', () => map.zoomOut());
 
-    // Status filter checkboxes
+    const locateUserBtn = document.getElementById('locate-user-btn');
+    const retryLocationModalBtn = document.getElementById('retry-location-modal-btn');
+    if (locateUserBtn) locateUserBtn.addEventListener('click', () => requestUserLocation(true)); 
+    if (retryLocationModalBtn) {
+        retryLocationModalBtn.addEventListener('click', () => {
+            const errorModal = document.getElementById('location-error-modal');
+            if (errorModal) {
+                const modalInstance = bootstrap.Modal.getInstance(errorModal);
+                if (modalInstance) modalInstance.hide();
+            }
+            requestUserLocation(true); 
+        });
+    }
+    
     document.querySelectorAll('.filter-section .form-check-input').forEach(checkbox => {
         checkbox.addEventListener('change', handleStatusFilterChange);
     });
 
-    // Update data button
-    document.getElementById('footer-update-btn').addEventListener('click', refreshMapData);
+    const updateBtn = document.getElementById('footer-update-btn');
+    if (updateBtn) {
+        updateBtn.addEventListener('click', refreshMapData);
+    }
     
-    // Initial setup for responsive elements
     handleResizeOrLoad(); 
-    window.addEventListener('resize', handleResizeOrLoad);
+    window.addEventListener('resize', debounce(handleResizeOrLoad, 150)); // Debounce resize
+
+    // Initial state for desktop: sidebar should be collapsed (CSS handles this by default width)
+    // No explicit JS needed to remove 'active' on load for desktop if CSS defaults to collapsed.
 }
 
 function toggleSidebar() {
-    sidebar.classList.toggle('active');
+    if (!sidebar || !contentWrapper) return;
     
-    // Adjust content for desktop if sidebar changes state
-    if (window.innerWidth >= 992) { // Desktop
-        // The CSS should handle fixed sidebar width and map taking remaining space with flexbox.
-        // If not, you might add/remove a class to contentWrapper or map here.
-        // e.g., contentWrapper.classList.toggle('sidebar-open-desktop');
+    const isActive = sidebar.classList.toggle('active');
+
+    // For desktop, add/remove a class to contentWrapper for CSS to adjust floating elements
+    if (window.innerWidth >= 992) {
+        if (isActive) {
+            contentWrapper.classList.add('sidebar-active');
+        } else {
+            contentWrapper.classList.remove('sidebar-active');
+        }
     }
     
-    // Crucial: Invalidate map size after sidebar animation completes or immediately
     setTimeout(() => {
         if (map) map.invalidateSize({ animate: true });
-    }, 350); // Match CSS transition duration
+    }, 310); 
 }
+
 
 function handleStatusFilterChange() {
     activeStatusFilters = Array.from(document.querySelectorAll('.filter-section .form-check-input:checked'))
@@ -59,74 +78,62 @@ function handleStatusFilterChange() {
 }
 
 function applyStatusFilters() {
-    if (!map || !processedFences) return; // Ensure map and data are ready
-
-    processedFences.forEach(fence => {
-        const marker = fence.marker; // Reference stored during processAndDisplayFences
+    if (!map || !window.processedFences) { 
+        console.warn("UI_INTERACTIONS: Map or processedFences not ready for filtering.");
+        return;
+    }
+    window.processedFences.forEach(fence => {
+        const marker = fence.marker; 
         if (!marker) return;
 
-        const fenceStatus = fence.status || 'unknown';
+        const fenceStatus = fence.status || 'unknown'; 
+        const layerGroup = window.markerLayers[fenceStatus] || window.markerLayers.unknown;
+
         if (activeStatusFilters.includes(fenceStatus)) {
-            if (!map.hasLayer(marker)) {
-                // Re-add to its original layer group, then ensure layer group is on map
-                const layerGroup = markerLayers[fenceStatus] || markerLayers.unknown;
-                if (layerGroup) {
-                    marker.addTo(layerGroup); // Marker is added to its group
-                    if (!map.hasLayer(layerGroup)) map.addLayer(layerGroup); // Ensure group is on map
-                } else {
-                     marker.addTo(map); // Fallback if layer group logic is complex
+            if (layerGroup && !map.hasLayer(marker)) { 
+                marker.addTo(layerGroup); 
+                if (!map.hasLayer(layerGroup)) { 
+                    map.addLayer(layerGroup);
                 }
+            } else if (!layerGroup && !map.hasLayer(marker)) { 
+                 marker.addTo(map);
             }
-        } else {
+        } else { 
             if (map.hasLayer(marker)) {
-                marker.remove(); // Removes from whatever layer it's on (map or group)
+                marker.remove(); 
             }
         }
     });
-    console.log("Applied filters:", activeStatusFilters);
 }
-
 
 function refreshMapData() {
-    showToast('<div class="d-flex align-items-center"><div class="spinner-border spinner-border-sm me-2" role="status"></div>جاري تحديث البيانات...</div>', 'info', 3000);
+    if (typeof showToast !== 'function') { 
+        console.warn("showToast function not available for refreshMapData status.");
+    } else {
+        showToast('<div class="d-flex align-items-center"><div class="spinner-border spinner-border-sm me-2" role="status"></div>جاري تحديث البيانات...</div>', 'info', 3000);
+    }
     
-    // Simulate fetching new data. In a real app, you'd make an API call.
-    // For now, re-parse and re-process existing data.
-    // To truly refresh, you'd need:
-    // fetch('/api/get_fences_data/')
-    //   .then(response => response.json())
-    //   .then(newData => {
-    //     FENCES_DATA_JSON = JSON.stringify(newData); // Update the global constant (if possible, or reassign a let variable)
-    //     parseInitialFenceData();
-    //     processAndDisplayFences(cityFilterInput.value.trim()); // Apply current city filter
-    //     if (currentUserLocation) fetchPredictionsForLocation(currentUserLocation);
-    //     showToast('تم تحديث بيانات نقاط التفتيش.', 'success');
-    //   })
-    //   .catch(error => {
-    //     console.error("Error refreshing data:", error);
-    //     showToast('فشل تحديث البيانات.', 'danger');
-    //   });
-
-    // Current simulation:
-    setTimeout(() => {
-        parseInitialFenceData(); // Re-parse from the potentially unchanged FENCES_DATA_JSON
-        processAndDisplayFences(document.getElementById('city-filter-input').value.trim()); // Re-filter with current city
-        if (currentUserLocation) {
-            fetchPredictionsForLocation(currentUserLocation); // Refresh predictions too
-        }
-        showToast('تم تحديث البيانات (محاكاة).', 'success');
-    }, 1000);
+    if (typeof parseInitialFenceData === 'function' && typeof processAndDisplayFences === 'function') {
+        parseInitialFenceData(); 
+        processAndDisplayFences(); 
+    } else {
+        console.error("UI_INTERACTIONS: parseInitialFenceData or processAndDisplayFences not found.");
+    }
+    
+    if (window.currentUserLocation && typeof fetchPredictionsForLocation === 'function') {
+        fetchPredictionsForLocation(window.currentUserLocation, true); 
+    }
+    if (typeof showToast === 'function') showToast('تم تحديث بيانات الخريطة.', 'success');
 }
 
-// Utility for showing toasts (can be global or part of UI module)
 function showToast(message, type = 'info', duration = 5000) {
     const toastContainer = document.querySelector('.toast-container');
     if (!toastContainer) {
-        console.error("Toast container not found!");
+        // console.error("Toast container not found!"); // Can be noisy if toast is optional
         return;
     }
 
-    const toastId = 'toast-' + Date.now(); // Unique ID for the toast
+    const toastId = 'toast-' + Date.now();
     const toastHTML = `
         <div id="${toastId}" class="toast align-items-center text-bg-${type} border-0" role="alert" aria-live="assertive" aria-atomic="true" data-bs-delay="${duration}">
             <div class="d-flex">
@@ -143,31 +150,56 @@ function showToast(message, type = 'info', duration = 5000) {
     if (toastElement) {
         const bootstrapToast = new bootstrap.Toast(toastElement);
         bootstrapToast.show();
-        // Optional: Remove from DOM after hidden, if Bootstrap doesn't do it.
         toastElement.addEventListener('hidden.bs.toast', () => {
             toastElement.remove();
         });
     }
 }
 
-
-// Handle responsive positioning of elements like status legend
 function handleResizeOrLoad() {
-    if (!statusLegend || !map) return;
+    if (!map) return;
 
-    if (window.innerWidth < 992) { // Mobile/Tablet
-        statusLegend.style.right = '15px';
-        statusLegend.style.left = 'auto';
-    } else { // Desktop
-        if (sidebar.classList.contains('active')) {
-            // Sidebar is open, position legend next to it
-            statusLegend.style.right = `calc(var(--sidebar-width-desktop) + 20px)`;
-            statusLegend.style.left = 'auto';
-        } else {
-            // Sidebar is closed (or not 'active' on desktop means it's not shown as overlay)
-            // Position relative to viewport edge if sidebar isn't a factor here
-            statusLegend.style.right = '20px';
-            statusLegend.style.left = 'auto';
-        }
+    // iOS viewport height fix
+    const setVh = () => {
+        const vh = window.innerHeight * 0.01;
+        document.documentElement.style.setProperty('--vh', `${vh}px`);
+    };
+    setVh(); // Set on initial load
+    // No need to re-add listener if it's already on window by setupUIEventListeners calling this once.
+    // But if called standalone, this ensures it's set up if not already:
+    if (!window.vhResizeListenerAttached) {
+        window.addEventListener('resize', setVh);
+        window.vhResizeListenerAttached = true;
     }
+
+
+    // Ensure sidebar state and floating elements are correct on load/resize
+    if (window.innerWidth >= 992) { // Desktop
+        // If sidebar is active, ensure contentWrapper has the class too.
+        if (sidebar && sidebar.classList.contains('active')) {
+            if(contentWrapper) contentWrapper.classList.add('sidebar-active');
+        } else {
+            if(contentWrapper) contentWrapper.classList.remove('sidebar-active');
+        }
+        // Hide mobile-specific close button
+        const closeSidebarBtn = document.getElementById('close-sidebar-btn');
+        if(closeSidebarBtn) closeSidebarBtn.style.display = 'none';
+
+    } else { // Mobile
+        if(contentWrapper) contentWrapper.classList.remove('sidebar-active'); // Not needed for mobile overlay
+         // Show mobile-specific close button
+        const closeSidebarBtn = document.getElementById('close-sidebar-btn');
+        if(closeSidebarBtn) closeSidebarBtn.style.display = 'block';
+    }
+     if (map) map.invalidateSize(); // Always good to call after potential layout changes
+}
+
+// Debounce utility
+function debounce(func, delay) {
+    let timeout;
+    return function(...args) {
+        const context = this;
+        clearTimeout(timeout);
+        timeout = setTimeout(() => func.apply(context, args), delay);
+    };
 }

@@ -1,5 +1,4 @@
 // static/js/data_handler.js
-// static/js/data_handler.js
 
 let allFencesData = []; 
 let processedFences = []; 
@@ -34,12 +33,18 @@ function processAndDisplayFences(filterCityTerm = null) {
 
     let fencesToDisplay = allFencesData;
     if (filterCityTerm && filterCityTerm.trim() !== "") {
-        fencesToDisplay = allFencesData.filter(fence =>
-            fence.city && fence.city.toLowerCase().includes(filterCityTerm.toLowerCase())
-        );
+        // This city filter is currently not active as city search is handled by main search bar.
+        // If you re-enable a dedicated city filter input, this logic will apply.
+        // For now, main search fetches specific results and doesn't rely on this client-side filter.
+        // So, filterCityTerm will likely be null or empty when this is called by general refresh.
+        console.warn("DATA_HANDLER: City filtering in processAndDisplayFences is present but currently not driven by a UI element. Main search uses API.");
+        // fencesToDisplay = allFencesData.filter(fence =>
+        //     fence.city && fence.city.toLowerCase().includes(filterCityTerm.toLowerCase())
+        // );
     }
 
-    fencesToDisplay.forEach(fence => {
+
+    allFencesData.forEach(fence => { // Changed from fencesToDisplay to allFencesData to ensure all are processed for map display
         if (!fence.latitude || !fence.longitude || (parseFloat(fence.latitude) === 0 && parseFloat(fence.longitude) === 0)) {
             console.warn("DATA_HANDLER: Skipping fence (invalid coords):", fence.name);
             return;
@@ -56,12 +61,12 @@ function processAndDisplayFences(filterCityTerm = null) {
         const marker = L.marker([fence.latitude, fence.longitude], {
             icon: iconToUse,
             title: fence.name,
-            fenceData: fence 
+            fenceData: fence // Store full fence data with marker for popups
         });
 
-        marker.bindPopup(() => createFencePopupContent(fence), {
+        marker.bindPopup(() => createFencePopupContent(fence), { // Pass full fence data
             className: 'custom-leaflet-popup',
-            minWidth: 240,
+            minWidth: 250, // Adjusted minWidth
         });
         
         const layerGroup = markerLayers[status] || markerLayers.unknown; 
@@ -73,12 +78,14 @@ function processAndDisplayFences(filterCityTerm = null) {
         }
         
         activeMapMarkers.push(marker);
-        checkpointMarkers[fence.id] = marker;
+        checkpointMarkers[fence.id] = marker; // Store marker by ID
 
+        // Store simplified data for internal processing if needed
         processedFences.push({
             id: fence.id, name: fence.name, status: status, city: fence.city || 'غير محدد',
             latitude: fence.latitude, longitude: fence.longitude,
-            message_time_iso: fence.message_time, marker: marker
+            message_time_iso: fence.message_time, // Keep original field name
+            marker: marker
         });
 
         if (fence.message_time) {
@@ -92,12 +99,13 @@ function processAndDisplayFences(filterCityTerm = null) {
     recentUpdates.sort((a, b) => new Date(b.time) - new Date(a.time));
     populateRecentUpdatesList(recentUpdates.slice(0, 7));
 
-    if (activeMapMarkers.length > 0 && !userLocationMarker && map && map.getBounds) {
+    if (activeMapMarkers.length > 0 && !userLocationMarker && map && map.getBounds && !map.getZoom()) {
+        // Check if map has not been zoomed/panned by user yet (simple check: !map.getZoom())
         try {
             const group = L.featureGroup(activeMapMarkers);
             if (group.getLayers().length > 0) { 
                  const groupBounds = group.getBounds();
-                 if (groupBounds.isValid() && !map.getBounds().contains(groupBounds)) {
+                 if (groupBounds.isValid()) { // removed: && !map.getBounds().contains(groupBounds)
                     map.fitBounds(groupBounds.pad(0.1));
                 }
             }
@@ -106,14 +114,16 @@ function processAndDisplayFences(filterCityTerm = null) {
         }
     }
     
-    console.log(`DATA_HANDLER: Displayed ${processedFences.length} fences on map (after any city filter).`);
-    applyStatusFilters();
+    console.log(`DATA_HANDLER: Displayed ${processedFences.length} fences on map.`);
+    applyStatusFilters(); // Apply status filters after markers are added
 }
 
+
 function createFencePopupContent(fenceData) {
+    // fenceData here is the full data object for the fence, including status, message_time, etc.
     const status = fenceData.status || 'unknown';
     const details = statusDetails[status] || statusDetails.unknown; 
-    const updatedTime = formatDateTime(fenceData.message_time || fenceData.status_time_iso);
+    const updatedTime = formatDateTime(fenceData.message_time || fenceData.status_time_iso); // Use message_time from initial load
 
     let content = `
         <div class="popup-header" style="background-color: ${details.headerColor};">
@@ -128,8 +138,14 @@ function createFencePopupContent(fenceData) {
                 <span class="popup-icon"><i class="fas fa-clock"></i></span>
                 <span>آخر تحديث: ${updatedTime}</span>
             </div>
+            <!-- Placeholder for AI prediction (e.g., wait time) -->
             <div class="prediction-placeholder" data-fence-id="${fenceData.id}">
-                <!-- Prediction content will be injected here -->
+                <!-- Prediction content will be injected here by location.js -->
+                 <hr class="prediction-separator">
+                 <div class="popup-item text-muted" style="font-size: 0.85em;">
+                    <span class="popup-icon"><i class="fas fa-spinner fa-spin"></i></span>
+                    <span>جاري تحميل التوقعات...</span>
+                </div>
             </div>
         </div>`;
     return content;
@@ -167,25 +183,25 @@ function formatDateTime(isoString) {
     try {
         const date = new Date(isoString);
         if (isNaN(date.getTime())) return "تاريخ غير صالح";
-        return date.toLocaleString('ar-EG', {
+        return date.toLocaleString('ar-EG', { // Using ar-EG for Arabic numerals and common format
             month: 'short', day: 'numeric',
             hour: 'numeric', minute: '2-digit', hour12: true
-        }).replace('، ', ' - ');
+        }).replace('، ', ' - '); // Replace comma if present
     } catch (e) { return "تاريخ غير صالح"; }
 }
+
 function formatTimeOnly(isoString) {
     if (!isoString) return "غير متوفر";
     try {
         const date = new Date(isoString);
         if (isNaN(date.getTime())) return "وقت غير صالح";
-        return date.toLocaleTimeString('ar-EG', {
+        return date.toLocaleTimeString('ar-EG', { // Using ar-EG
             hour: 'numeric', minute: '2-digit', hour12: true
         });
     } catch (e) { return "وقت غير صالح"; }
 }
 
-
-
-function getFenceDataById(fenceId) { // Not currently used but could be useful
+// Not strictly necessary for current flow but can be useful for direct access
+function getFenceDataById(fenceId) { 
     return allFencesData.find(f => f.id.toString() === fenceId.toString());
 }

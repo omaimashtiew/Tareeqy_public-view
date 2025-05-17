@@ -8,26 +8,28 @@ document.addEventListener('DOMContentLoaded', function() {
         document.body.innerHTML = '<div style="padding:20px;text-align:center;color:red;font-size:1.2em;">خطأ حرج: حاوية الخريطة غير موجودة. لا يمكن تشغيل التطبيق.</div>';
         return; 
     }
-    // console.log("Map div found. Initial clientHeight:", mapDiv.clientHeight, "clientWidth:", mapDiv.clientWidth);
 
     initializeMap(); 
     
     if (map) {
-        // console.log("MAIN_MAP.JS: Leaflet map object IS available.");
         parseInitialFenceData(); 
         processAndDisplayFences(); 
         attemptInitialUserLocation(); 
 
         setupUIEventListeners(); 
         setupSearchEventListeners(); 
-        setupRoutePlannerEventListeners(); 
+        
+        // Check if setupRoutePlannerEventListeners is defined before calling
+        if (typeof setupRoutePlannerEventListeners === 'function') {
+            setupRoutePlannerEventListeners(); 
+        } else {
+            console.warn("MAIN_MAP.JS: setupRoutePlannerEventListeners is not defined. Route planning features might be affected.");
+        }
+
 
         setTimeout(() => {
             if (map) {
-                // const mapContainer = map.getContainer();
-                // console.log("MAIN_MAP.JS: Calling initial map.invalidateSize(). Map container clientHeight:", mapContainer.clientHeight);
                 map.invalidateSize();
-                // console.log("MAIN_MAP.JS: Map size after invalidateSize():", map.getSize());
                 if (map.getSize().x === 0 || map.getSize().y === 0) {
                     console.error("MAP STILL HAS ZERO SIZE. CHECK CSS LAYOUT.");
                 }
@@ -36,29 +38,37 @@ document.addEventListener('DOMContentLoaded', function() {
 
         window.addEventListener('resize', debounce(() => {
             if (map) {
-                // console.log("MAIN_MAP.JS: Window resized, calling map.invalidateSize()");
                 map.invalidateSize();
             }
         }, 250));
 
         map.on('popupopen', function(e) {
-            console.log("MAIN_MAP.JS: Popup opened for a marker.");
+            console.log("MAIN_MAP.JS: Popup opened event triggered.");
             if (e.popup && e.popup._source && e.popup._source.options.fenceData) {
                 const fenceId = e.popup._source.options.fenceData.id;
                 const popupElement = e.popup.getElement();
-                if (!popupElement) return;
+                console.log("MAIN_MAP.JS: Popup opened for fence ID:", fenceId);
+
+                if (!popupElement) {
+                    console.warn("MAIN_MAP.JS: Popup element not found for fence ID:", fenceId);
+                    return;
+                }
                 const placeholder = popupElement.querySelector(`.prediction-placeholder[data-fence-id="${fenceId}"]`);
                 
                 if (placeholder) {
-                    const existingPredictionForThisFence = window.latestPredictionData 
-                        ? window.latestPredictionData.find(p => p.id === fenceId) 
-                        : null;
+                    console.log("MAIN_MAP.JS: Prediction placeholder found for fence ID:", fenceId);
+                    let relevantPrediction = null;
+                    if (window.latestPredictionData && Array.isArray(window.latestPredictionData)) {
+                         relevantPrediction = window.latestPredictionData.find(p => String(p.id) === String(fenceId));
+                    }
 
-                    if (existingPredictionForThisFence) {
-                        console.log("MAIN_MAP.JS: Updating open popup with existing prediction data for fence ID:", fenceId);
-                        updateOpenPopupWithSpecificPrediction(placeholder, existingPredictionForThisFence);
+                    if (relevantPrediction) {
+                        console.log("MAIN_MAP.JS: Updating open popup with existing prediction data for fence ID:", fenceId, "Data:", relevantPrediction);
+                        updateOpenPopupWithSpecificPrediction(placeholder, relevantPrediction);
                     } else if (currentUserLocation) {
-                        console.log("MAIN_MAP.JS: No specific prediction for fence ID:", fenceId, "in current batch. User location known. Triggering silent fetch.");
+                        console.log("MAIN_MAP.JS: No specific prediction for fence ID:", fenceId, "in current batch (window.latestPredictionData). User location known. Triggering silent fetch IF NOT RECENTLY FETCHED.");
+                        // To prevent rapid re-fetching, you might add a timestamp check here
+                        // For now, it will always re-fetch if data for this specific fence isn't immediately available.
                         placeholder.innerHTML = `
                             <hr class="prediction-separator">
                             <div class="popup-item text-muted" style="font-size: 0.85em;">
@@ -76,8 +86,10 @@ document.addEventListener('DOMContentLoaded', function() {
                             </div>`;
                     }
                 } else {
-                    console.warn("MAIN_MAP.JS: Prediction placeholder not found in open popup for fence ID:", fenceId);
+                    console.warn("MAIN_MAP.JS: Prediction placeholder NOT found in open popup for fence ID:", fenceId);
                 }
+            } else {
+                 console.warn("MAIN_MAP.JS: Popup opened, but no valid popup, source, or fenceData found.");
             }
         });
 
