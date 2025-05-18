@@ -235,14 +235,11 @@ def predict_wait_time(
         
         predicted_wait_adjusted = float(predicted_wait_raw)
 
-        if current_status_str == config.STATUS_SEVERE_TRAFFIC:
-            predicted_wait_adjusted = min(predicted_wait_adjusted * 1.8, 100.0)
-        elif current_status_str == config.STATUS_CLOSED:
-            predicted_wait_adjusted = min(predicted_wait_adjusted * 1.09, 90.0)
-        else: 
-            predicted_wait_adjusted = min(predicted_wait_adjusted, 60.0)
+        if current_status_str == config.STATUS_CLOSED:
+           predicted_wait_adjusted =int(predicted_wait_adjusted * 0.8)
+       
         
-        predicted_wait_final = max(0, round(predicted_wait_adjusted, 1))
+        predicted_wait_final = int(round(predicted_wait_adjusted))
 
         return {
             'success': True,

@@ -1,9 +1,39 @@
-// static/js/location.js
-
 let currentUserLocation = null;
 let locationWatchId = null;
 const locationErrorModalInstance = bootstrap.Modal.getOrCreateInstance(document.getElementById('location-error-modal'));
 window.latestPredictionData = null; // Stores the array of fence predictions
+
+/**
+ * Formats wait time in minutes to a human-readable string
+ * If wait time is greater than 60 minutes, converts to hours and minutes format
+ * @param {number} minutes - The wait time in minutes
+ * @return {string} Formatted wait time string in Arabic
+ */
+function formatWaitTime(minutes) {
+    if (typeof minutes !== 'number' || isNaN(minutes)) {
+        return 'غير متوفر';
+    }
+    
+    // Round to nearest integer
+    minutes = Math.round(minutes);
+    
+    // If less than 60 minutes, return minutes only
+    if (minutes < 60) {
+        return `${minutes} دقيقة`;
+    }
+    
+    // Calculate hours and remaining minutes
+    const hours = Math.floor(minutes / 60);
+    const remainingMinutes = minutes % 60;
+    
+    // Format the string based on whether there are remaining minutes
+    if (remainingMinutes === 0) {
+        return hours === 1 ? `ساعة واحدة` : `${hours} ساعات`;
+    } else {
+        const hoursText = hours === 1 ? `ساعة واحدة` : `${hours} ساعات`;
+        return `${hoursText} و ${remainingMinutes} دقيقة`;
+    }
+}
 
 function attemptInitialUserLocation() {
     const storedLat = localStorage.getItem('userLatitude');
@@ -249,11 +279,14 @@ function updateOpenPopupWithSpecificPrediction(placeholderElement, predictionDat
         if (predictionData.prediction_success === true && typeof predictionData.predicted_wait_minutes === 'number' && !isNaN(predictionData.predicted_wait_minutes)) {
             console.log("LOCATION.JS (updateOpenPopupWithSpecificPrediction): Condition for successful prediction MET. Wait minutes:", predictionData.predicted_wait_minutes);
             const waitTime = Math.round(predictionData.predicted_wait_minutes);
+            const formattedWaitTime = formatWaitTime(waitTime);
+            console.log("نوع predicted_wait_minutes:", typeof predictionData.predicted_wait_minutes, "القيمة:", predictionData.predicted_wait_minutes);
+
             predictionHTML = `
                 <hr class="prediction-separator">
                 <div class="popup-item prediction-info">
                     <span class="popup-icon"><i class="fas fa-hourglass-half"></i></span>
-                    <span>وقت الانتظار المتوقع: <strong>${waitTime} دقيقة</strong></span>
+                    <span>وقت الانتظار المتوقع: <strong>${formattedWaitTime}</strong></span>
                 </div>`;
             if (predictionData.prediction_debug_info) { // Optional: for debugging purposes
                 predictionHTML += `<div class="popup-item text-muted small" style="font-size:0.75em; opacity:0.7;">${predictionData.prediction_debug_info}</div>`;

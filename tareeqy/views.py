@@ -256,6 +256,16 @@ def haversine(lat1, lon1, lat2, lon2):
     distance = R * c
     return distance
 
+def format_wait_time_arabic(minutes):
+    if minutes < 60:
+        return f"{minutes} دقيقة"
+    hours = minutes // 60
+    remaining = minutes % 60
+    if remaining == 0:
+        return "ساعة واحدة" if hours == 1 else f"{hours} ساعات"
+    hours_text = "ساعة واحدة" if hours == 1 else f"{hours} ساعات"
+    return f"{hours_text} و {remaining} دقيقة"
+
 
 @require_POST 
 def get_predictions_for_location(request):
@@ -331,7 +341,9 @@ def get_predictions_for_location(request):
                 'prediction_success': ai_result.get('success', False),
                 'predicted_wait_minutes': ai_result.get('predicted_wait_minutes') if ai_result.get('success') else None,
                 'prediction_error': ai_result.get('error') if not ai_result.get('success') else None,
-                'prediction_debug_info': ai_result.get('debug_info') # Optional
+                'prediction_debug_info': ai_result.get('debug_info'), # Optional
+                'formatted_wait_time': format_wait_time_arabic(ai_result.get('predicted_wait_minutes'))
+
             }
             results.append(fence_result)
         
