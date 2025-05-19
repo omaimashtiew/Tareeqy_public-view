@@ -2,31 +2,32 @@ let currentUserLocation = null;
 let locationWatchId = null;
 const locationErrorModalInstance = bootstrap.Modal.getOrCreateInstance(document.getElementById('location-error-modal'));
 window.latestPredictionData = null; // Stores the array of fence predictions
-
+const AVG_SPEED_KMH = 21; 
 /**
  * Formats wait time in minutes to a human-readable string
  * If wait time is greater than 60 minutes, converts to hours and minutes format
  * @param {number} minutes - The wait time in minutes
  * @return {string} Formatted wait time string in Arabic
  */
+function calculateTravelTime(distanceKm) {
+    const hours = distanceKm / AVG_SPEED_KMH;
+    const minutes = Math.round(hours * 60);
+    return minutes;
+}
 function formatWaitTime(minutes) {
     if (typeof minutes !== 'number' || isNaN(minutes)) {
         return 'غير متوفر';
     }
     
-    // Round to nearest integer
     minutes = Math.round(minutes);
     
-    // If less than 60 minutes, return minutes only
     if (minutes < 60) {
         return `${minutes} دقيقة`;
     }
     
-    // Calculate hours and remaining minutes
     const hours = Math.floor(minutes / 60);
     const remainingMinutes = minutes % 60;
     
-    // Format the string based on whether there are remaining minutes
     if (remainingMinutes === 0) {
         return hours === 1 ? `ساعة واحدة` : `${hours} ساعات`;
     } else {
@@ -266,66 +267,68 @@ function updateOpenPopupWithPrediction() {
 }
 
 function updateOpenPopupWithSpecificPrediction(placeholderElement, predictionData) {
-    if (!placeholderElement) {
-        console.error("LOCATION.JS (updateOpenPopupWithSpecificPrediction): placeholderElement is null!");
-        return;
-    }
-    console.log("LOCATION.JS (updateOpenPopupWithSpecificPrediction): Updating placeholder. Prediction Data Received for this specific fence:", JSON.stringify(predictionData, null, 2));
+    if (!placeholderElement) return;
 
     let predictionHTML = '';
-    if (predictionData) { // predictionData is the 'relevantPrediction' object for the specific fence
-        console.log("LOCATION.JS (updateOpenPopupWithSpecificPrediction): predictionData for this fence is TRUTHY.");
-        // Check for prediction_success and predicted_wait_minutes specifically
-        if (predictionData.prediction_success === true && typeof predictionData.predicted_wait_minutes === 'number' && !isNaN(predictionData.predicted_wait_minutes)) {
-            console.log("LOCATION.JS (updateOpenPopupWithSpecificPrediction): Condition for successful prediction MET. Wait minutes:", predictionData.predicted_wait_minutes);
+    if (predictionData) {
+        if (predictionData.prediction_success === true && typeof predictionData.predicted_wait_minutes === 'number') {
             const waitTime = Math.round(predictionData.predicted_wait_minutes);
             const formattedWaitTime = formatWaitTime(waitTime);
-            console.log("نوع predicted_wait_minutes:", typeof predictionData.predicted_wait_minutes, "القيمة:", predictionData.predicted_wait_minutes);
+            
+            // حساب زمن الوصول إذا كان الموقع الحالي متاحاً
+            let travelTimeHTML = '';
+            if (currentUserLocation && predictionData.distance_km) {
+                const travelTimeMinutes = calculateTravelTime(predictionData.distance_km);
+                const formattedTravelTime = formatWaitTime(travelTimeMinutes);
+                travelTimeHTML = `
+                    <div class="popup-item travel-time-info">
+                        <span class="popup-icon"><i class="fas fa-car"></i></span>
+                        <span>الزمن للوصول من موقعك: <strong>${formattedTravelTime}</strong></span>
+                    </div>`;
+            }
 
             predictionHTML = `
                 <hr class="prediction-separator">
                 <div class="popup-item prediction-info">
                     <span class="popup-icon"><i class="fas fa-hourglass-half"></i></span>
                     <span>وقت الانتظار المتوقع: <strong>${formattedWaitTime}</strong></span>
-                </div>`;
-            if (predictionData.prediction_debug_info) { // Optional: for debugging purposes
-                predictionHTML += `<div class="popup-item text-muted small" style="font-size:0.75em; opacity:0.7;">${predictionData.prediction_debug_info}</div>`;
+                </div>
+                ${travelTimeHTML}`;
+                
+            if (predictionData.prediction_debug_info) {
+                predictionHTML += `<div class="popup-item text-muted small">${predictionData.prediction_debug_info}</div>`;
             }
         } else if (predictionData.prediction_error) {
-            console.log("LOCATION.JS (updateOpenPopupWithSpecificPrediction): Condition for prediction_error MET. Error:", predictionData.prediction_error);
             predictionHTML = `
                 <hr class="prediction-separator">
                 <div class="popup-item prediction-error">
                     <span class="popup-icon"><i class="fas fa-exclamation-circle"></i></span>
                     <span>التوقع: ${predictionData.prediction_error}</span>
                 </div>`;
-        } else { // Fallback if prediction_success is false but no error, or data format issue.
-            console.log("LOCATION.JS (updateOpenPopupWithSpecificPrediction): Condition for 'no detailed prediction' or format issue MET. Success flag:", predictionData.prediction_success, "Wait minutes type:", typeof predictionData.predicted_wait_minutes, "Value:", predictionData.predicted_wait_minutes);
+        } else {
             predictionHTML = `
                 <hr class="prediction-separator">
-                <div class="popup-item text-muted" style="font-size: 0.85em;">
+                <div class="popup-item text-muted">
                     <span class="popup-icon"><i class="fas fa-info-circle"></i></span>
                     <span>لا توجد توقعات تفصيلية لهذه النقطة حالياً.</span>
                 </div>`;
         }
-    } else { // predictionData is null or undefined (meaning no relevant prediction was found for THIS specific fence)
-         console.log("LOCATION.JS (updateOpenPopupWithSpecificPrediction): predictionData for this specific fence is FALSY. currentUserLocation:", currentUserLocation);
-         if (currentUserLocation) {
+    } else {
+        if (currentUserLocation) {
             predictionHTML = `
                 <hr class="prediction-separator">
-                <div class="popup-item text-muted" style="font-size: 0.85em;">
+                <div class="popup-item text-muted">
                     <span class="popup-icon"><i class="fas fa-info-circle"></i></span>
-                    <span>لا تتوفر توقعات لهذه النقطة حاليًا (قد تكون بعيدة جدًا أو خطأ في البيانات).</span>
+                    <span>لا تتوفر توقعات لهذه النقطة حاليًا.</span>
                 </div>`;
-         } else {
+        } else {
             predictionHTML = `
                 <hr class="prediction-separator">
-                <div class="popup-item text-muted" style="font-size: 0.85em;">
+                <div class="popup-item text-muted">
                     <span class="popup-icon"><i class="fas fa-map-marker-alt"></i></span>
                     <span>حدد موقعك للحصول على التوقعات.</span>
                 </div>`;
-         }
+        }
     }
     placeholderElement.innerHTML = predictionHTML;
-    console.log("LOCATION.JS (updateOpenPopupWithSpecificPrediction): Placeholder HTML set for the popup.");
 }

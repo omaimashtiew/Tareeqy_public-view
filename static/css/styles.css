@@ -375,3 +375,34 @@ html, body {
         min-height: -webkit-fill-available;
     }
 }
+
+
+
+.popup-item {
+    display: flex;
+    align-items: center;
+    margin: 8px 0;
+}
+
+.popup-icon {
+    margin-left: 8px;
+    width: 20px;
+    text-align: center;
+}
+
+.prediction-separator {
+    margin: 10px 0;
+    border-color: rgba(0,0,0,0.1);
+}
+
+.travel-time-info {
+    color: #2c7be5;
+}
+
+.prediction-info {
+    color: #27ae60;
+}
+
+.prediction-error {
+    color: #e74c3c;
+}

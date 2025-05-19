@@ -139,7 +139,7 @@ def calculate_geo_features(fences_df):
 
     if len(coords) >= 3: # Need at least k_clusters points
         # Simple approach: fixed number of clusters, or basic elbow method
-        optimal_k = min(3, len(coords)) # Max 3 clusters or fewer if not enough unique points
+        optimal_k = min(10, len(coords)) # Max 3 clusters or fewer if not enough unique points
         
         # Check for sufficient unique coordinate pairs for KMeans
         if coords.drop_duplicates().shape[0] < optimal_k:
@@ -202,7 +202,7 @@ def preprocess_data(fences_df, status_df):
                          (ai_config.RUSH_HOURS_EVENING[0] <= x < ai_config.RUSH_HOURS_EVENING[1]) else 0
     )
     df['day_part'] = pd.cut(df['hour'],
-                            bins=[-1, 5, 11, 17, 23], # Adjusted bins for 0-23 hours
+                            bins=[0, 6, 12, 18, 24], # Adjusted bins for 0-23 hours
                             labels=['night', 'morning', 'afternoon', 'evening'], right=True)
     
     # Label Encoders
@@ -310,9 +310,9 @@ def train_and_save_model(X, y):
 
     model = xgb.XGBRegressor(
         objective='reg:squarederror',
-        n_estimators=200, # Reduced for faster training, adjust as needed
-        learning_rate=0.05,
-        max_depth=5,
+        n_estimators=250, # Reduced for faster training, adjust as needed
+        learning_rate=0.03,
+        max_depth=4,
         subsample=0.8,
         colsample_bytree=0.8,
         random_state=42,
