@@ -3,22 +3,31 @@
 const mainSearchInput = document.getElementById('search-input');
 const mainSearchResultsContainer = document.querySelector('.search-results');
 const searchButton = document.getElementById('search-btn');
+let allFencesNames = [];
 
-function debounce(func, delay) {
-    let timeout;
-    return function(...args) {
-        const context = this;
-        clearTimeout(timeout);
-        timeout = setTimeout(() => func.apply(context, args), delay);
-    };
+function loadAllFencesNames() {
+    fetch(`${API_URL_SEARCH_CITY_OR_FENCE}?q=`)
+        .then(response => response.json())
+        .then(data => {
+            if (Array.isArray(data)) {
+                allFencesNames = data.map(fence => fence.name).filter(name => name);
+            }
+        })
+        .catch(error => {
+            console.error('SEARCH.JS: Error loading fences names:', error);
+        });
 }
+
+// استدعاء الدالة عند تحميل الصفحة
+document.addEventListener('DOMContentLoaded', loadAllFencesNames);
 
 function setupSearchEventListeners() {
     if (mainSearchInput && mainSearchResultsContainer && searchButton) {
-        mainSearchInput.addEventListener('input', debounce(performMainSearch, 300)); // Reduced debounce slightly
+        // تم إزالة الدالة debounce هنا لجعل البحث فوريًا
+        mainSearchInput.addEventListener('input', performMainSearch);
 
         mainSearchInput.addEventListener('focus', () => {
-            if (mainSearchInput.value.trim().length >= 1 && mainSearchResultsContainer.children.length > 0) { // Min 1 char to show existing
+            if (mainSearchInput.value.trim().length >= 1 && mainSearchResultsContainer.children.length > 0) {
                 mainSearchResultsContainer.style.display = 'block';
             }
         });
@@ -64,41 +73,66 @@ function performMainSearch() {
         return;
     }
 
-    // Changed minimum length to 1 for suggestions
-    if (searchTerm.length < 1) { 
-        mainSearchResultsContainer.style.display = 'none';
-        return;
-    }
-    
-    // Show a subtle loading indicator in the dropdown
-    mainSearchResultsContainer.innerHTML = `<div class="search-loading p-2 text-center text-muted"><i class="fas fa-spinner fa-spin me-2"></i>جاري البحث...</div>`;
-    mainSearchResultsContainer.style.display = 'block';
+    // البحث المحلي الفوري
+    if (allFencesNames.length > 0 && searchTerm.length >= 1) {
+        const localResults = allFencesNames.filter(name => 
+            name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+            name.toLowerCase().startsWith(searchTerm.toLowerCase())
+        ).slice(0, 5);
 
+        if (localResults.length > 0) {
+            renderLocalSearchResults(localResults, searchTerm);
+            return; // إظهار النتائج المحلية فقط دون انتظار الخادم
+        }
+    }
+
+    // إذا لم تكن هناك نتائج محلية، نبحث في الخادم
+    mainSearchResultsContainer.style.display = 'block';
 
     fetch(`${API_URL_SEARCH_CITY_OR_FENCE}?q=${encodeURIComponent(searchTerm)}`)
         .then(response => {
-            if (!response.ok) {
-                return response.json().then(err => {
-                    throw new Error(err.message || err.error || `Network error: ${response.status}`);
-                }).catch(() => {
-                    throw new Error(`Network error: ${response.status} (Could not parse error JSON)`);
-                });
-            }
+            if (!response.ok) throw new Error('Network error');
             return response.json();
         })
         .then(apiResults => {
             renderMainSearchResults(apiResults, searchTerm);
         })
         .catch(error => {
-            console.error('SEARCH.JS: Error fetching main search results:', error);
-            clearMainSearchResults(); // Clear loading indicator
-            mainSearchResultsContainer.innerHTML = `<div class="no-results p-2 text-center text-danger">فشل البحث: ${error.message}</div>`;
-            mainSearchResultsContainer.style.display = 'block';
+            console.error('SEARCH.JS: Error fetching search results:', error);
+            clearMainSearchResults();
         });
 }
 
+// باقي الدوال تبقى كما هي بدون تغيير
+function renderLocalSearchResults(results, searchTerm) {
+    clearMainSearchResults();
+    
+    results.forEach(name => {
+        const item = document.createElement('div');
+        item.className = 'search-result-item local-result';
+        item.innerHTML = `
+            <span class="result-name">${highlightMatch(name, searchTerm)}</span>
+            <span class="local-badge">محلي</span>`;
+        
+        item.addEventListener('click', () => {
+            mainSearchInput.value = name;
+            performMainSearch();
+        });
+        
+        mainSearchResultsContainer.appendChild(item);
+    });
+    
+    mainSearchResultsContainer.style.display = 'block';
+}
+
+function highlightMatch(text, match) {
+    if (!match) return text;
+    const regex = new RegExp(`(${match})`, 'gi');
+    return text.replace(regex, '<span class="highlight-match">$1</span>');
+}
+
 function renderMainSearchResults(results, searchTerm) {
-    clearMainSearchResults(); // Clear previous results or loading indicator
+    clearMainSearchResults();
 
     if (!results) {
         mainSearchResultsContainer.innerHTML = `<div class="no-results p-2 text-center text-muted">لا توجد نتائج لـ "${searchTerm}".</div>`;
@@ -164,7 +198,6 @@ function renderMainSearchResults(results, searchTerm) {
                 
                 clearMainSearchResults();
                 mainSearchResultsContainer.style.display = 'none';
-                // mainSearchInput.value = ''; // Optionally clear the search input text
             });
             mainSearchResultsContainer.appendChild(item);
         });
@@ -175,6 +208,5 @@ function renderMainSearchResults(results, searchTerm) {
 function clearMainSearchResults() {
     if (mainSearchResultsContainer) {
         mainSearchResultsContainer.innerHTML = '';
-        // mainSearchResultsContainer.style.display = 'none'; // Display is handled by caller
     }
 }

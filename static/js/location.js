@@ -181,7 +181,6 @@ function fetchPredictionsForLocation(location, silently = false) {
         return;
     }
     if (!silently) {
-        showToast('<div class="d-flex align-items-center"><div class="spinner-border spinner-border-sm me-2" role="status"></div>جاري جلب توقعات نقاط التفتيش...</div>', 'info', 4000);
     }
     console.log("LOCATION.JS (fetchPredictionsForLocation): Fetching predictions for location:", location);
 
