@@ -20,8 +20,8 @@ try:
     from sklearn.preprocessing import LabelEncoder, StandardScaler
     from sklearn.cluster import KMeans
     # Check if RandomForestRegressor was successfully imported
-    if 'RandomForestRegressor' not in sys.modules:
-         raise ImportError("RandomForestRegressor could not be imported from sklearn.ensemble.")
+    # if 'RandomForestRegressor' not in sys.modules:
+       #   raise ImportError("RandomForestRegressor could not be imported from sklearn.ensemble.")
 except ImportError as e:
     print(f"CRITICAL ERROR (xgboost_predictor.py): Missing required AI/ML libraries or RandomForestRegressor: {e}")
     print("Please install them: pip install joblib pandas numpy scikit-learn")
@@ -174,15 +174,20 @@ def load_prediction_artifacts(force_reload=False):
         return True
 
     except FileNotFoundError as e:
-        print(f"ERROR loading RandomForest artifacts: {e}") # Updated name
-        print("Please ensure the model has been trained and all artifacts exist in the artifacts directory.")
+        print(f"ERROR loading RandomForest artifacts: {e}")
+        print("Attempting to train model automatically...")
+
+    # --- NEW: Auto-trigger training ---
+    try:
+        from tareeqy.ai_prediction import train_xgboost_model
+        train_xgboost_model.main()
+        print("Model trained. Retrying artifact load...")
+        return load_prediction_artifacts(force_reload=True)  # Retry after training
+    except Exception as train_err:
+        print(f"Auto-training failed: {train_err}")
         PREDICTION_ARTIFACTS["loaded"] = False
         return False
-    except Exception as e:
-        print(f"An unexpected error occurred loading RandomForest artifacts: {e}") # Updated name
-        traceback.print_exc()
-        PREDICTION_ARTIFACTS["loaded"] = False
-        return False
+
 
 # Helper functions mirroring preprocessing logic
 def _get_day_part(hour):
@@ -313,7 +318,7 @@ def predict_wait_time(
         if kmeans and hasattr(kmeans, 'predict'):
              try:
                 # KMeans was fit on a NumPy array in training, use NumPy array for predict
-                geo_cluster = kmeans.predict(np.array([[f_lat, f_lon]]))[0]
+                geo_cluster = kmeans.predict(pd.DataFrame([[f_lat, f_lon]], columns=["latitude", "longitude"]))[0]
              except Exception as e:
                 print(f"Warning: KMeans prediction failed for [{f_lat}, {f_lon}]: {e}. Using geo_cluster=0.")
                 # traceback.print_exc() # Optional: print full traceback for KMeans error
