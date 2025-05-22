@@ -14,5 +14,5 @@ urlpatterns = [
     # 2. Include your 'tareeqy' app's URLs under a prefix, e.g., '/app/'.
     #    This means all URLs from 'tareeqy.urls' will start with '/app/'.
     #    The namespace 'tareeqy_app' is crucial for using {% url %} tags.
-    path('app/', include('tareeqy.urls', namespace='tareeqy_app')),
+    path('Tareeqy/app/', include('tareeqy.urls', namespace='tareeqy_app')),
 ] 

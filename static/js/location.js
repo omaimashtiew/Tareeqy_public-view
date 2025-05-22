@@ -275,24 +275,43 @@ function updateOpenPopupWithSpecificPrediction(placeholderElement, predictionDat
             const formattedWaitTime = formatWaitTime(waitTime);
             
             // حساب زمن الوصول إذا كان الموقع الحالي متاحاً
-            let travelTimeHTML = '';
+            let combinedTimeHTML = '';
             if (currentUserLocation && predictionData.distance_km) {
                 const travelTimeMinutes = calculateTravelTime(predictionData.distance_km);
-                const formattedTravelTime = formatWaitTime(travelTimeMinutes);
-                travelTimeHTML = `
-                    <div class="popup-item travel-time-info">
-                        <span class="popup-icon"><i class="fas fa-car"></i></span>
-                        <span>الزمن للوصول من موقعك: <strong>${formattedTravelTime}</strong></span>
+                const totalTimeMinutes = waitTime + travelTimeMinutes;
+                const formattedTotalTime = formatWaitTime(totalTimeMinutes);
+                
+                // حساب وقت الوصول النهائي
+                const now = new Date();
+                const arrivalTime = new Date(now.getTime() + totalTimeMinutes * 60000);
+                let hours = arrivalTime.getHours();
+                const minutes = arrivalTime.getMinutes();
+                const ampm = hours >= 12 ? 'PM' : 'AM';
+                hours = hours % 12;
+                hours = hours ? hours : 12; // الساعة 0 تصبح 12
+                const formattedArrivalTime = `${hours}:${minutes < 10 ? '0' + minutes : minutes} ${ampm}`;
+
+                
+                combinedTimeHTML = `
+                    <hr class="prediction-separator">
+                    <div class="popup-item prediction-info">
+                        <span class="popup-icon"><i class="fas fa-hourglass-half"></i></span>
+                        <span>الوقت المتوقع للوصول: <strong>${formattedTotalTime}</strong></span>
+                    </div>
+                    <div class="popup-item arrival-time-info">
+                        <span class="popup-icon"><i class="fas fa-clock"></i></span>
+                        <span>وقت الوصول المتوقع: <strong>${formattedArrivalTime}</strong></span>
+                    </div>`;
+            } else {
+                combinedTimeHTML = `
+                    <hr class="prediction-separator">
+                    <div class="popup-item prediction-info">
+                        <span class="popup-icon"><i class="fas fa-hourglass-half"></i></span>
+                        <span>وقت الانتظار المتوقع: <strong>${formattedWaitTime}</strong></span>
                     </div>`;
             }
 
-            predictionHTML = `
-                <hr class="prediction-separator">
-                <div class="popup-item prediction-info">
-                    <span class="popup-icon"><i class="fas fa-hourglass-half"></i></span>
-                    <span>وقت الانتظار المتوقع: <strong>${formattedWaitTime}</strong></span>
-                </div>
-                ${travelTimeHTML}`;
+            predictionHTML = combinedTimeHTML;
                 
             if (predictionData.prediction_debug_info) {
                 predictionHTML += `<div class="popup-item text-muted small">${predictionData.prediction_debug_info}</div>`;
