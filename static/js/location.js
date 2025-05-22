@@ -300,7 +300,7 @@ function updateOpenPopupWithSpecificPrediction(placeholderElement, predictionDat
                     </div>
                     <div class="popup-item arrival-time-info">
                         <span class="popup-icon"><i class="fas fa-clock"></i></span>
-                        <span>وقت الوصول المتوقع: <strong>${formattedArrivalTime}</strong></span>
+                        <span>عند الساعة  : <strong>${formattedArrivalTime}</strong></span>
                     </div>`;
             } else {
                 combinedTimeHTML = `

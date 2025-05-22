@@ -42,7 +42,11 @@ function findShortestWaitInCity(cityName, modalInstance) {
             'Content-Type': 'application/json', 
             'X-CSRFToken': CSRF_TOKEN 
         },
-        body: JSON.stringify({ city_name: cityName })
+body: JSON.stringify({
+    city_name: cityName,
+    latitude: currentUserLocation?.lat,
+    longitude: currentUserLocation?.lng
+})
     })
     .then(response => {
         if (!response.ok) {
@@ -60,7 +64,7 @@ function findShortestWaitInCity(cityName, modalInstance) {
             showToast(
                 `أقصر وقت انتظار في ${data.city}: ${data.formatted_wait_time} (${data.fence_name}) - وقت الوصول المتوقع: ${data.formatted_arrival_time}`,
                 'success',
-                7000
+                4000
             );
 
             // البحث عن الحاجز على الخريطة وفتح popup له
