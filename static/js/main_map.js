@@ -1,5 +1,4 @@
 // static/js/main_map.js
-
 document.addEventListener('DOMContentLoaded', function() {
     console.log("DOM fully loaded and parsed.");
     const mapDiv = document.getElementById('map');
@@ -35,7 +34,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             }
         }, 300);
-
+if (currentUserLocation) {
+    fetchPredictionsForLocation(currentUserLocation, true); // جلب صامت (بدون رسائل)
+}
         window.addEventListener('resize', debounce(() => {
             if (map) {
                 map.invalidateSize();

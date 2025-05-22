@@ -15,8 +15,10 @@
     
     <!-- Your Custom CSS -->
     <link rel="stylesheet" href="{% static 'css/styles.css' %}">
+    
 </head>
 <body>
+    
     <div class="app-container">
         <!-- Header - Adapted from purple design -->
         <nav class="navbar fixed-top app-header">
@@ -183,11 +185,12 @@
 
     <!-- App Data Passed from Django View -->
     <script>
-        const FENCES_DATA_JSON = `{{ fences_json|escapejs }}`;
-        const CSRF_TOKEN = "{{ csrf_token }}";
-        const API_URL_GET_PREDICTIONS = "{% url 'tareeqy_app:api_get_predictions' %}"; 
-        const API_URL_SEARCH_CITY_OR_FENCE = "{% url 'tareeqy_app:api_search_city_or_fence' %}";
-    </script>
+    const FENCES_DATA_JSON = `{{ fences_json|escapejs }}`;
+    const CSRF_TOKEN = "{{ csrf_token }}";
+    const API_URL_GET_PREDICTIONS = "{% url 'tareeqy_app:api_get_predictions' %}"; 
+    const API_URL_SEARCH_CITY_OR_FENCE = "{% url 'tareeqy_app:api_search_city_or_fence' %}";
+    const API_URL_SHORTEST_WAIT_BY_CITY = "{% url 'tareeqy_app:api_shortest_wait_by_city' %}";
+</script>
 
     <!-- Application JavaScript Modules -->
     <script src="{% static 'js/map_config.js' %}"></script>

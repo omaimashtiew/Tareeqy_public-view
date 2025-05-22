@@ -1,11 +1,8 @@
 // static/js/route_planner.js
-// Placeholder to resolve ReferenceError if the file is missing
 
 function setupRoutePlannerEventListeners() {
-    console.log("ROUTE_PLANNER.JS: setupRoutePlannerEventListeners called (placeholder function).");
-    // Actual route planning logic would go here.
-    // For now, this function exists to prevent errors in main_map.js.
-
+    console.log("ROUTE_PLANNER.JS: setupRoutePlannerEventListeners called");
+    
     const goButton = document.getElementById('footer-go-btn');
     const routeModalElement = document.getElementById('route-modal');
     let routeModalInstance = null;
@@ -18,9 +15,6 @@ function setupRoutePlannerEventListeners() {
             console.log("Route planner button clicked, showing modal.");
             routeModalInstance.show();
         });
-    } else {
-        if (!goButton) console.error("ROUTE_PLANNER.JS: Footer 'Go' button not found.");
-        if (!routeModalInstance) console.error("ROUTE_PLANNER.JS: Route modal instance could not be created.");
     }
 
     const planRouteBtn = document.getElementById('plan-route-btn');
@@ -30,33 +24,75 @@ function setupRoutePlannerEventListeners() {
             if (destinationInput) {
                 const destination = destinationInput.value.trim();
                 if (destination) {
-                    // Ensure showToast is available or define a local placeholder
-                    if (typeof showToast === 'function') {
-                       showToast(`Route planning for "${destination}" is not yet implemented.`, 'info');
-                    } else {
-                       console.info(`Route planning for "${destination}" is not yet implemented.`);
-                    }
-                    if (routeModalInstance) routeModalInstance.hide();
+                    findShortestWaitInCity(destination, routeModalInstance);
                 } else {
-                    if (typeof showToast === 'function') {
-                        showToast('يرجى إدخال وجهة.', 'warning');
-                    } else {
-                        console.warn('يرجى إدخال وجهة.');
-                    }
+                    showToast('يرجى إدخال وجهة.', 'warning');
                 }
             }
         });
     }
 }
 
-// It's good practice to ensure this script doesn't break if showToast isn't globally available yet
-// though ui_interactions.js (where showToast is defined) should be loaded before this in typical setup.
-// However, if this script were to be loaded standalone or ui_interactions.js failed, this helps.
-if (typeof showToast === 'undefined' && typeof bootstrap !== 'undefined' && bootstrap.Toast) {
-    // A very basic toast placeholder if the main one isn't available
-    // This is just for extreme robustness, ideally showToast from ui_interactions.js is used.
-    console.warn("ROUTE_PLANNER.JS: Main showToast function not found, using a basic console log fallback for toasts from route_planner.");
-    // function showToast(message, type = 'info') { // This would redefine it if not careful.
-    //     console.log(`Toast (route_planner fallback): [${type}] ${message}`);
-    // }
+function findShortestWaitInCity(cityName, modalInstance) {
+    showToast(`<div class="d-flex align-items-center"><div class="spinner-border spinner-border-sm me-2" role="status"></div>جاري البحث في ${cityName}...</div>`, 'info', 5000);
+
+    fetch(API_URL_SHORTEST_WAIT_BY_CITY, {
+        method: 'POST',
+        headers: { 
+            'Content-Type': 'application/json', 
+            'X-CSRFToken': CSRF_TOKEN 
+        },
+        body: JSON.stringify({ city_name: cityName })
+    })
+    .then(response => {
+        if (!response.ok) {
+            return response.json().then(err => { 
+                throw new Error(err.error || 'خطأ في الخادم'); 
+            });
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.success) {
+            if (modalInstance) modalInstance.hide();
+            
+            // عرض النتيجة للمستخدم
+            showToast(
+                `أقصر وقت انتظار في ${data.city}: ${data.formatted_wait_time} (${data.fence_name}) - وقت الوصول المتوقع: ${data.formatted_arrival_time}`,
+                'success',
+                7000
+            );
+
+            // البحث عن الحاجز على الخريطة وفتح popup له
+            const fence = window.allFences.find(f => f.id === data.fence_id);
+            if (fence) {
+                map.flyTo([fence.latitude, fence.longitude], DETAILED_ZOOM);
+                
+                // فتح popup للحاجز المحدد
+                const marker = findMarkerByFenceId(data.fence_id);
+                if (marker) {
+                    marker.openPopup();
+                }
+            }
+        } else {
+            showToast(data.error || 'لم يتم العثور على نتائج', 'warning');
+        }
+    })
+    .catch(error => {
+        console.error('Error finding shortest wait:', error);
+        showToast(`خطأ في البحث: ${error.message}`, 'danger');
+    });
 }
+
+function findMarkerByFenceId(fenceId) {
+    let foundMarker = null;
+    map.eachLayer(layer => {
+        if (layer instanceof L.Marker && layer.options.fenceData && layer.options.fenceData.id === fenceId) {
+            foundMarker = layer;
+        }
+    });
+    return foundMarker;
+}
+
+// تأكد من تعريف window.allFences عند تحميل البيانات
+// يمكنك إضافته في ملف data_handler.js أو main_map.js عند تحميل البيانات

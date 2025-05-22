@@ -205,3 +205,4 @@ function formatTimeOnly(isoString) {
 function getFenceDataById(fenceId) { 
     return allFencesData.find(f => f.id.toString() === fenceId.toString());
 }
+window.allFences = JSON.parse(FENCES_DATA_JSON);

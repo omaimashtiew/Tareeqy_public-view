@@ -9,6 +9,7 @@ import json
 from datetime import datetime # Keep this for current_time_utc type hints
 import math
 import traceback
+from datetime import datetime, timedelta  # أضف timedelta هنا
 
 from .models import Fence, FenceStatus
 
@@ -357,3 +358,126 @@ def get_predictions_for_location(request):
         print(f"SERVER ERROR in get_predictions_for_location: {e}")
         traceback.print_exc()
         return JsonResponse({'error': 'حدث خطأ داخلي في الخادم أثناء معالجة التوقعات.'}, status=500)
+
+
+
+@require_POST
+def api_shortest_wait_by_city(request):
+    """
+    API endpoint to find the checkpoint with the shortest expected wait time in a specified city.
+    
+    Request body should contain:
+    - city_name: Name of the city to search for checkpoints
+    
+    Returns:
+    - success: Boolean indicating if the operation was successful
+    - city: Name of the city that was searched
+    - fence_id: ID of the checkpoint with shortest wait time
+    - fence_name: Name of the checkpoint with shortest wait time
+    - formatted_wait_time: Formatted wait time in Arabic
+    - formatted_arrival_time: Formatted expected arrival time
+    - error: Error message if operation failed
+    """
+    try:
+        data = json.loads(request.body)
+        city_name = data.get('city_name', '').strip()
+        
+        if not city_name:
+            return JsonResponse({
+                'success': False,
+                'error': 'يرجى إدخال اسم المدينة.'
+            })
+        
+        # Check if the city exists in our database by looking for fences with this city
+        city_fences = Fence.objects.filter(city__iexact=city_name)
+        
+        if not city_fences.exists():
+            return JsonResponse({
+                'success': False,
+                'error': f'تخطيط المسار لـ "{city_name}" غير متوفر حالياً.'
+            })
+        
+        # Get the latest status for each fence in this city
+        latest_status_sq = FenceStatus.objects.filter(
+            fence_id=OuterRef('pk')
+        ).order_by('-message_time')
+        
+        city_fences = city_fences.annotate(
+            latest_status=Subquery(latest_status_sq.values('status')[:1]),
+            latest_time=Subquery(latest_status_sq.values('message_time')[:1])
+        ).values(
+            'id', 'name', 'latitude', 'longitude', 'city',
+            'latest_status', 'latest_time'
+        )
+        
+        current_time_utc = timezone.now()
+        shortest_wait_fence = None
+        shortest_wait_minutes = float('inf')
+        shortest_wait_result = None
+        
+        # Calculate expected wait time for each fence in the city
+        for fence in city_fences:
+            if fence['latitude'] is None or fence['longitude'] is None:
+                continue
+                
+            try:
+                fence_lat = float(fence['latitude'])
+                fence_lon = float(fence['longitude'])
+                if abs(fence_lat) < 0.0001 and abs(fence_lon) < 0.0001:
+                    continue
+            except (ValueError, TypeError):
+                continue
+            
+            # Predict wait time using the AI predictor
+            ai_result = predict_wait_time(
+                fence_id=fence['id'],
+                current_time_utc=current_time_utc,
+                fence_latitude=fence_lat,
+                fence_longitude=fence_lon,
+                fence_city=fence['city'] or "unknown",
+                current_status_str=fence['latest_status'] or 'unknown'
+            )
+            
+            if ai_result.get('success') and ai_result.get('predicted_wait_minutes') is not None:
+                wait_minutes = ai_result.get('predicted_wait_minutes')
+                
+                # Find the fence with the shortest wait time
+                if wait_minutes < shortest_wait_minutes:
+                    shortest_wait_minutes = wait_minutes
+                    shortest_wait_fence = fence
+                    shortest_wait_result = ai_result
+        
+        # If no valid predictions were found
+        if shortest_wait_fence is None:
+            return JsonResponse({
+                'success': False,
+                'error': f'لم نتمكن من حساب وقت الانتظار لأي حاجز في {city_name}.'
+            })
+        
+        # Calculate expected arrival time (current time + wait time)
+        arrival_time = current_time_utc + timedelta(minutes=shortest_wait_minutes)
+        formatted_arrival_time = arrival_time.strftime("%I:%M %p")  # Format as "5:25 PM"
+        
+        return JsonResponse({
+            'success': True,
+            'city': city_name,
+            'fence_id': shortest_wait_fence['id'],
+            'fence_name': shortest_wait_fence['name'],
+            'formatted_wait_time': format_wait_time_arabic(shortest_wait_minutes),
+            'formatted_arrival_time': formatted_arrival_time
+        })
+        
+    except json.JSONDecodeError:
+        return JsonResponse({
+            'success': False,
+            'error': 'بيانات الطلب غير صالحة (JSON).'
+        }, status=400)
+    except Exception as e:
+        print(f"ERROR in api_shortest_wait_by_city: {e}")
+        traceback.print_exc()
+        return JsonResponse({
+            'success': False,
+            'error': f'حدث خطأ أثناء معالجة الطلب: {str(e)}'
+        }, status=500)
+
+
