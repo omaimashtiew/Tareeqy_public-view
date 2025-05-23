@@ -1,352 +1,489 @@
-let currentUserLocation = null;
+// static/js/location.js
+
+let currentUserLocation = null; // { lat: number, lng: number, accuracy: number }
 let locationWatchId = null;
 const locationErrorModalInstance = bootstrap.Modal.getOrCreateInstance(document.getElementById('location-error-modal'));
-window.latestPredictionData = null; // Stores the array of fence predictions
-const AVG_SPEED_KMH = 21; 
-/**
- * Formats wait time in minutes to a human-readable string
- * If wait time is greater than 60 minutes, converts to hours and minutes format
- * @param {number} minutes - The wait time in minutes
- * @return {string} Formatted wait time string in Arabic
- */
+window.latestPredictionData = null;
+
+const AVG_SPEED_KMH = 21;
+
+// --- Location Constants ---
+const LOCATION_OPTIONS = {
+    enableHighAccuracy: true,
+    timeout: 25000, // 25 seconds for each attempt within watchPosition
+    maximumAge: 0    // Force fresh location
+};
+const RECENT_STORED_LOCATION_MAX_AGE_MS = 5 * 60 * 1000; // 5 minutes
+const ACCEPTABLE_STORED_ACCURACY_METERS = 500; // Use stored if accuracy is better than this
+const MIN_DESIRED_ACCURACY_METERS = 100; // A "good" accuracy level
+const MAX_ACCEPTABLE_ACCURACY_METERS = 1000; // Location with accuracy worse than this gets a warning
+const PREDICTION_FETCH_DISTANCE_THRESHOLD_METERS = 100; // Fetch predictions if user moves > this
+
+let isFirstLocationUpdateFromWatch = true; // True until first successful update from watchPosition
+let lastLocationUpdateTimestamp = 0;
+let lastFetchedPredictionsLocation = null; // { lat, lng }
+
+// --- Toast Helper Stubs (Adapt to your actual implementation) ---
+// Ensure these are globally available or move them to a shared utility file.
+// This is a very basic example using Bootstrap's toast component.
+// You'll need a container in your HTML like:
+// <div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 1100"></div>
+function showToast(message, type = 'info', duration = 5000, toastId = null) {
+    const toastContainer = document.querySelector('.toast-container');
+    if (!toastContainer) {
+        console.warn('Toast container not found. Message:', message);
+        alert(`${type.toUpperCase()}: ${message}`); // Fallback
+        return;
+    }
+
+    const toastEl = document.createElement('div');
+    toastEl.className = `toast align-items-center text-white bg-${type} border-0`;
+    toastEl.setAttribute('role', 'alert');
+    toastEl.setAttribute('aria-live', 'assertive');
+    toastEl.setAttribute('aria-atomic', 'true');
+    if (toastId) toastEl.id = toastId;
+
+    const autohide = duration > 0;
+    if (autohide) {
+        toastEl.setAttribute('data-bs-delay', duration);
+        toastEl.setAttribute('data-bs-autohide', 'true');
+    } else {
+        toastEl.setAttribute('data-bs-autohide', 'false');
+    }
+
+    toastEl.innerHTML = `
+        <div class="d-flex">
+            <div class="toast-body">
+                ${message}
+            </div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+    `;
+    toastContainer.appendChild(toastEl);
+    const toast = new bootstrap.Toast(toastEl);
+    toast.show();
+    toastEl.addEventListener('hidden.bs.toast', () => toastEl.remove());
+}
+
+function dismissToast(toastId) {
+    const toastElement = document.getElementById(toastId);
+    if (toastElement) {
+        const toastInstance = bootstrap.Toast.getInstance(toastElement);
+        if (toastInstance) {
+            toastInstance.hide();
+        } else {
+            toastElement.remove(); // Fallback if instance not found but element exists
+        }
+    }
+}
+// --- End Toast Helper Stubs ---
+
+
 function calculateTravelTime(distanceKm) {
     const hours = distanceKm / AVG_SPEED_KMH;
     const minutes = Math.round(hours * 60);
     return minutes;
 }
+
 function formatWaitTime(minutes) {
-    if (typeof minutes !== 'number' || isNaN(minutes)) {
-        return 'غير متوفر';
-    }
-    
+    if (typeof minutes !== 'number' || isNaN(minutes)) return 'غير متوفر';
     minutes = Math.round(minutes);
-    
-    if (minutes < 60) {
-        return `${minutes} دقيقة`;
-    }
-    
+    if (minutes < 1) return 'أقل من دقيقة';
+    if (minutes < 60) return `${minutes} دقيقة`;
     const hours = Math.floor(minutes / 60);
     const remainingMinutes = minutes % 60;
-    
-    if (remainingMinutes === 0) {
-        return hours === 1 ? `ساعة واحدة` : `${hours} ساعات`;
-    } else {
-        const hoursText = hours === 1 ? `ساعة واحدة` : `${hours} ساعات`;
-        return `${hoursText} و ${remainingMinutes} دقيقة`;
-    }
+    const hoursText = hours === 1 ? `ساعة` : `${hours} ساعات`;
+    if (remainingMinutes === 0) return hoursText;
+    return `${hoursText} و ${remainingMinutes} دقيقة`;
 }
 
 function attemptInitialUserLocation() {
+    console.log("LOCATION.JS: Attempting to determine initial user location...");
     const storedLat = localStorage.getItem('userLatitude');
     const storedLng = localStorage.getItem('userLongitude');
-    const storedTimestamp = localStorage.getItem('locationTimestamp');
-    const fiveMinutesAgo = new Date().getTime() - (5 * 60 * 1000);
+    const storedTimestampStr = localStorage.getItem('locationTimestamp');
+    const storedAccuracyStr = localStorage.getItem('userAccuracy');
 
-    if (storedLat && storedLng && storedTimestamp && parseInt(storedTimestamp) > fiveMinutesAgo) {
-        console.log("LOCATION.JS: Using recent location from localStorage.");
-        const locationData = {
-            coords: {
-                latitude: parseFloat(storedLat),
-                longitude: parseFloat(storedLng),
-                accuracy: parseFloat(localStorage.getItem('userAccuracy') || 500)
+    if (storedLat && storedLng && storedTimestampStr) {
+        const storedTimestamp = parseInt(storedTimestampStr, 10);
+        const locationAge = Date.now() - storedTimestamp;
+
+        if (locationAge < RECENT_STORED_LOCATION_MAX_AGE_MS) {
+            const storedAccuracy = storedAccuracyStr ? parseFloat(storedAccuracyStr) : (ACCEPTABLE_STORED_ACCURACY_METERS + 1);
+            if (storedAccuracy <= ACCEPTABLE_STORED_ACCURACY_METERS) {
+                console.log(`LOCATION.JS: Using recent and acceptable stored location (Accuracy: ${storedAccuracy}m).`);
+                const locationData = {
+                    coords: {
+                        latitude: parseFloat(storedLat),
+                        longitude: parseFloat(storedLng),
+                        accuracy: storedAccuracy
+                    },
+                    timestamp: storedTimestamp,
+                    isFromStorage: true
+                };
+                // Temporarily apply stored location, watch will refine it
+                handleLocationSuccess(locationData);
+                // Start watching for a more accurate or current location
+                startWatchingLocation(false); // false: not a manual retry
+                return true; // Indicated a stored location was applied
+            } else {
+                console.log(`LOCATION.JS: Stored location recent, but accuracy (${storedAccuracy}m) not good enough.`);
             }
-        };
-        handleLocationSuccess(locationData);
-        return true;
+        } else {
+            console.log("LOCATION.JS: Stored location is too old.");
+        }
+    } else {
+        console.log("LOCATION.JS: No complete stored location found.");
     }
 
-    const storedError = localStorage.getItem('locationError');
-    if (storedError) {
+    // Check for recent blocking errors (like PERMISSION_DENIED)
+    const storedErrorStr = localStorage.getItem('locationError');
+    if (storedErrorStr) {
         try {
-            const errorData = JSON.parse(storedError);
-            if (errorData.timestamp && parseInt(errorData.timestamp) > fiveMinutesAgo) {
-                console.log("LOCATION.JS: Using stored location error from localStorage.");
-                handleLocationError(errorData, true); // true to indicate it's from storage
-                return true;
+            const errorData = JSON.parse(storedErrorStr);
+            if (errorData.timestamp && (Date.now() - parseInt(errorData.timestamp, 10)) < RECENT_STORED_LOCATION_MAX_AGE_MS) {
+                if (String(errorData.code) === '1' || String(errorData.code) === 'PERMISSION_DENIED') {
+                    console.log("LOCATION.JS: Recent PERMISSION_DENIED error stored. Not attempting new request automatically.");
+                    handleLocationError({ code: errorData.code, message: errorData.message }, true, true); // isFromStorage, isBlocking
+                    return false; // Did not get location, and won't try now.
+                }
             }
-        } catch (e) { console.error("LOCATION.JS: Error parsing stored locationError:", e); }
+        } catch (e) { console.error("LOCATION.JS: Error parsing stored locationError:", e); localStorage.removeItem('locationError');}
     }
-
-    requestUserLocation(false);
-    return false;
+    
+    // If no suitable stored location and no recent blocking error, start watching.
+    isFirstLocationUpdateFromWatch = true; // Reset for the new watch session
+    startWatchingLocation(false);
+    return false; // Location request initiated (watch started), but not yet successful/available from watch.
 }
 
 function requestUserLocation(isManualRetry = false) {
+    if (isManualRetry) {
+        console.log("LOCATION.JS: Manual location retry requested.");
+        isFirstLocationUpdateFromWatch = true; // Reset for map flyTo behavior on next success
+        localStorage.removeItem('locationError'); // Clear previous error on manual retry
+    }
+    startWatchingLocation(isManualRetry);
+}
+
+function startWatchingLocation(isManualRetry = false) {
     if (!navigator.geolocation) {
-        showToast('خدمة تحديد الموقع غير مدعومة في متصفحك.', 'danger');
+        showToast('خدمة تحديد الموقع غير مدعومة في متصفحك.', 'danger', 0);
         handleLocationError({ code: 'NOT_SUPPORTED', message: 'Geolocation not supported' });
         return;
     }
 
+    dismissToast('locating-toast'); // Dismiss any previous
     const toastMessage = isManualRetry
         ? '<div class="d-flex align-items-center"><div class="spinner-border spinner-border-sm me-2" role="status"></div>جاري إعادة محاولة تحديد موقعك...</div>'
         : '<div class="d-flex align-items-center"><div class="spinner-border spinner-border-sm me-2" role="status"></div>جاري تحديد موقعك الحالي...</div>';
-    const toastType = isManualRetry ? 'primary' : 'info';
+    showToast(toastMessage, 'info', 0, 'locating-toast'); // 0 duration = indefinite until dismissed
 
-    showToast(toastMessage, toastType, isManualRetry ? 10000 : 7000);
+    if (locationWatchId !== null) {
+        navigator.geolocation.clearWatch(locationWatchId);
+        console.log("LOCATION.JS: Cleared previous location watch.");
+    }
 
-    if (locationWatchId !== null) navigator.geolocation.clearWatch(locationWatchId);
-
-    navigator.geolocation.getCurrentPosition(
-        handleLocationSuccess,
-        (error) => handleLocationError(error, false), // Pass false for isFromStorage
-        { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 }
+    console.log("LOCATION.JS: Starting to watch position...");
+    locationWatchId = navigator.geolocation.watchPosition(
+        handleLocationSuccess, // Success callback
+        (error) => handleLocationError(error, false), // Error callback (not from storage)
+        LOCATION_OPTIONS
     );
 }
 
+function stopWatchingLocation() {
+    if (locationWatchId !== null) {
+        navigator.geolocation.clearWatch(locationWatchId);
+        locationWatchId = null;
+        console.log("LOCATION.JS: Stopped watching position.");
+    }
+}
+
 function handleLocationSuccess(position) {
-    currentUserLocation = {
+    const now = Date.now();
+    // Throttle updates if they come too frequently from watchPosition with no change
+    if (!position.isFromStorage && position.timestamp && position.timestamp === lastLocationUpdateTimestamp && (now - lastLocationUpdateTimestamp) < 1000) {
+        return; // Ignore redundant updates
+    }
+    lastLocationUpdateTimestamp = position.timestamp || now;
+
+    const newLoc = {
         lat: position.coords.latitude,
         lng: position.coords.longitude
     };
     const accuracy = position.coords.accuracy;
 
-    console.log("LOCATION.JS: Location found:", currentUserLocation, "Accuracy:", accuracy);
+    // If new location is significantly less accurate than current, and user hasn't moved much, be cautious
+    if (currentUserLocation && !isFirstLocationUpdateFromWatch && !position.isFromStorage &&
+        accuracy > (currentUserLocation.accuracy * 1.5) && accuracy > MIN_DESIRED_ACCURACY_METERS) {
+        if (map && map.distance(newLoc, currentUserLocation) < accuracy / 2) {
+            console.warn(`LOCATION.JS: New location accuracy (${accuracy}m) significantly worse. Retaining previous better location for centering.`);
+            updateUserMarkerAndAccuracyCircle(newLoc, accuracy, true); // Update visuals only
+            return;
+        }
+    }
+    
+    currentUserLocation = { ...newLoc, accuracy: accuracy };
+
+    console.log(`LOCATION.JS: Location ${position.isFromStorage ? 'loaded from storage' : (isFirstLocationUpdateFromWatch ? 'initial fix' : 'update')}: `, currentUserLocation);
+
     localStorage.setItem('userLatitude', currentUserLocation.lat.toString());
     localStorage.setItem('userLongitude', currentUserLocation.lng.toString());
     localStorage.setItem('userAccuracy', accuracy.toString());
-    localStorage.setItem('locationTimestamp', new Date().getTime().toString());
+    localStorage.setItem('locationTimestamp', now.toString());
     localStorage.removeItem('locationError');
 
-    showToast('تم تحديد موقعك بنجاح!', 'success', 3000);
+    dismissToast('locating-toast');
 
-    if (userLocationMarker) userLocationMarker.remove();
-    if (accuracyCircle) accuracyCircle.remove();
+    updateUserMarkerAndAccuracyCircle(currentUserLocation, accuracy);
 
-    userLocationMarker = L.marker(currentUserLocation, { icon: icons.userLocation, zIndexOffset: 1000 })
-        .addTo(map)
-        .bindPopup(`موقعك الحالي (دقة ~${accuracy.toFixed(0)} متر)`);
-
-    if (accuracy < MAX_ACCURACY_RADIUS_METERS) {
-        accuracyCircle = L.circle(currentUserLocation, accuracy, {
-            color: 'var(--primary-color)', fillColor: 'var(--primary-color)',
-            fillOpacity: 0.15, weight: 2, interactive: false
-        }).addTo(map);
+    if (!map) {
+        console.error("LOCATION.JS (handleLocationSuccess): Map object not available for UI updates.");
+        return; // Cannot proceed with map-related UI updates
     }
 
-    map.flyTo(currentUserLocation, DETAILED_ZOOM, { animate: true, duration: 1.0 });
-    setTimeout(() => {
-      if (userLocationMarker && map.hasLayer(userLocationMarker)) userLocationMarker.openPopup();
-    }, 1100);
+    if (isFirstLocationUpdateFromWatch && !position.isFromStorage) {
+        showToast(`تم تحديد موقعك (دقة ${accuracy.toFixed(0)} م).`, 'success', 4000);
+        map.flyTo(currentUserLocation, DETAILED_ZOOM, { animate: true, duration: 1.0 });
+        setTimeout(() => {
+            if (userLocationMarker && map.hasLayer(userLocationMarker) && !userLocationMarker.isPopupOpen()) {
+                if (accuracy < MAX_ACCEPTABLE_ACCURACY_METERS) userLocationMarker.openPopup();
+            }
+        }, 1100);
+        isFirstLocationUpdateFromWatch = false;
+    } else if (!position.isFromStorage && accuracy > MAX_ACCEPTABLE_ACCURACY_METERS) {
+        showToast(`دقة الموقع منخفضة (${accuracy.toFixed(0)} م). حاول التحرك لمكان مفتوح.`, 'warning', 5000);
+    }
+    
+    // Fetch predictions if user moved significantly or if it's the first good fix
+    let shouldFetch = false;
+    if (!lastFetchedPredictionsLocation) {
+        shouldFetch = true;
+    } else if (map) {
+        const distanceMoved = map.distance(currentUserLocation, lastFetchedPredictionsLocation);
+        if (distanceMoved > PREDICTION_FETCH_DISTANCE_THRESHOLD_METERS) {
+            shouldFetch = true;
+        }
+    }
 
-    fetchPredictionsForLocation(currentUserLocation, false);
+    if (shouldFetch) {
+        console.log("LOCATION.JS: Fetching predictions due to movement or initial fix.");
+        fetchPredictionsForLocation(currentUserLocation, position.isFromStorage || !isFirstLocationUpdateFromWatch); // Silent if from storage or not first watch update
+        lastFetchedPredictionsLocation = { lat: currentUserLocation.lat, lng: currentUserLocation.lng };
+    } else if (position.isFromStorage){ // Always fetch for stored location if not fetched before
+         fetchPredictionsForLocation(currentUserLocation, true);
+         lastFetchedPredictionsLocation = { lat: currentUserLocation.lat, lng: currentUserLocation.lng };
+    }
 }
 
-function handleLocationError(error, isFromStorage = false) {
-    console.error("LOCATION.JS: Geolocation Error Code:", error.code, "Message:", error.message);
+function updateUserMarkerAndAccuracyCircle(location, accuracy, onlyUpdateVisuals = false) {
+    if (!map) return; // Cannot update marker if map not ready
+
+    if (userLocationMarker) {
+        userLocationMarker.setLatLng(location);
+        userLocationMarker.setPopupContent(`موقعك الحالي (دقة ~${accuracy.toFixed(0)} متر)`);
+    } else {
+        userLocationMarker = L.marker(location, { icon: icons.userLocation, zIndexOffset: 1000 })
+            .addTo(map)
+            .bindPopup(`موقعك الحالي (دقة ~${accuracy.toFixed(0)} متر)`);
+    }
+
+    if (accuracyCircle) {
+        accuracyCircle.setLatLng(location).setRadius(accuracy);
+        if (accuracy >= MAX_ACCURACY_RADIUS_METERS || accuracy <= 0) {
+            if (map.hasLayer(accuracyCircle)) map.removeLayer(accuracyCircle);
+        } else {
+            if (!map.hasLayer(accuracyCircle)) accuracyCircle.addTo(map);
+        }
+    } else {
+        if (accuracy > 0 && accuracy < MAX_ACCURACY_RADIUS_METERS) {
+            accuracyCircle = L.circle(location, accuracy, {
+                color: 'var(--primary-color)', fillColor: 'var(--primary-color)',
+                fillOpacity: 0.15, weight: 2, interactive: false
+            }).addTo(map);
+        }
+    }
+
+    // If only updating visuals, we don't fly or change primary 'currentUserLocation'
+    // That logic is in handleLocationSuccess
+}
+
+function handleLocationError(error, isFromStorage = false, isBlockingError = false) {
+    const errorCode = String(error.code || (error.message && error.message.includes('User denied') ? 'PERMISSION_DENIED' : 'UNKNOWN'));
+    console.error(`LOCATION.JS: Geolocation Error (isFromStorage: ${isFromStorage}, isBlocking: ${isBlockingError}). Code: ${errorCode}, Message: ${error.message}`);
+    
+    dismissToast('locating-toast');
     let displayMessage = "حدث خطأ غير معروف أثناء محاولة تحديد موقعك.";
-    const errorCode = error.code ? error.code.toString() : (error.message || 'UNKNOWN_ERROR_FORMAT');
 
-    switch (errorCode) {
-        case '1':
-        case 'PERMISSION_DENIED':
-            displayMessage = "تم رفض إذن الوصول للموقع. يرجى تمكينها من إعدادات المتصفح/الجهاز.";
-            if (!isFromStorage && locationErrorModalInstance) locationErrorModalInstance.show();
-            else if (!isFromStorage) console.warn("Location error modal instance not found, but should show.");
-            break;
-        case '2':
-        case 'POSITION_UNAVAILABLE':
-            displayMessage = "معلومات الموقع غير متوفرة حاليًا. تأكد من تفعيل GPS ووجود إشارة جيدة.";
-            if (!isFromStorage) showToast(displayMessage, 'warning', 7000);
-            break;
-        case '3':
-        case 'TIMEOUT':
-            displayMessage = "انتهت مهلة طلب الموقع. الشبكة قد تكون ضعيفة أو GPS يستغرق وقتًا أطول.";
-            if (!isFromStorage) showToast(displayMessage, 'warning', 7000);
-            break;
-        case 'NOT_SUPPORTED':
-             displayMessage = "خدمة تحديد الموقع غير مدعومة في متصفحك.";
-             if (!isFromStorage) showToast(displayMessage, 'danger');
-             break;
-        default:
-            if (!isFromStorage) showToast(displayMessage + ` (رمز الخطأ: ${errorCode})`, 'danger');
+    if (!isFromStorage || (isFromStorage && !isBlockingError)) {
+        switch (errorCode) {
+            case '1': case 'PERMISSION_DENIED':
+                displayMessage = "تم رفض إذن الوصول للموقع. يرجى تمكينها من إعدادات المتصفح/الجهاز.";
+                if (!isFromStorage && locationErrorModalInstance) locationErrorModalInstance.show();
+                else if (!isFromStorage) showToast(displayMessage, 'danger', 0); // Persistent toast
+                stopWatchingLocation(); // Critical: stop trying if permission denied
+                break;
+            case '2': case 'POSITION_UNAVAILABLE':
+                displayMessage = "معلومات الموقع غير متوفرة حاليًا. تأكد من تفعيل GPS ووجود إشارة جيدة.";
+                if (!isFromStorage) showToast(displayMessage, 'warning', 7000);
+                // Keep watching, it might become available
+                break;
+            case '3': case 'TIMEOUT':
+                displayMessage = "انتهت مهلة طلب الموقع. الشبكة ضعيفة أو GPS يستغرق وقتًا أطول.";
+                if (!isFromStorage) showToast(displayMessage, 'warning', 7000);
+                // Keep watching
+                break;
+            case 'NOT_SUPPORTED':
+                displayMessage = "خدمة تحديد الموقع غير مدعومة في متصفحك.";
+                if (!isFromStorage) showToast(displayMessage, 'danger', 0);
+                stopWatchingLocation();
+                break;
+            default:
+                if (!isFromStorage) showToast(displayMessage + ` (رمز: ${errorCode})`, 'danger', 7000);
+        }
     }
 
-    if (!isFromStorage && typeof error.code === 'number') {
+    if (!isFromStorage && error.code) { // Only store new errors from API
         localStorage.setItem('locationError', JSON.stringify({
-            code: error.code, message: error.message,
-            timestamp: new Date().getTime().toString()
+            code: error.code, message: error.message, timestamp: Date.now().toString()
         }));
+        // Do NOT clear currentUserLocation here if watchPosition is active and error is transient.
+        // Let watchPosition try again. Only clear if error is fatal (PERMISSION_DENIED, NOT_SUPPORTED)
     }
-    currentUserLocation = null;
+
+    if (errorCode === '1' || errorCode === 'PERMISSION_DENIED' || errorCode === 'NOT_SUPPORTED') {
+        currentUserLocation = null; // Definitely no location possible
+        lastFetchedPredictionsLocation = null;
+        if (userLocationMarker && map && map.hasLayer(userLocationMarker)) map.removeLayer(userLocationMarker);
+        if (accuracyCircle && map && map.hasLayer(accuracyCircle)) map.removeLayer(accuracyCircle);
+        userLocationMarker = null;
+        accuracyCircle = null;
+    }
     updateOpenPopupWithPrediction();
 }
 
-
 function fetchPredictionsForLocation(location, silently = false) {
-    if (!location) {
-        console.warn("LOCATION.JS (fetchPredictionsForLocation): Cannot fetch predictions, user location is unknown.");
-        window.latestPredictionData = null;
-        updateOpenPopupWithPrediction();
+    if (!location || !location.lat || !location.lng) {
+        console.warn("LOCATION.JS (fetchPredictionsForLocation): Invalid or unknown location.", location);
+        if (window.latestPredictionData !== null) {
+            window.latestPredictionData = null;
+            updateOpenPopupWithPrediction();
+        }
         return;
     }
     if (!silently) {
+        // showToast('جاري تحديث التوقعات...', 'info', 2000, 'prediction-toast');
     }
-    console.log("LOCATION.JS (fetchPredictionsForLocation): Fetching predictions for location:", location);
+    console.log("LOCATION.JS: Fetching predictions for:", location);
 
+    // Ensure API_URL_GET_PREDICTIONS and CSRF_TOKEN are globally available
     fetch(API_URL_GET_PREDICTIONS, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
         body: JSON.stringify({ latitude: location.lat, longitude: location.lng })
     })
     .then(response => {
-        console.log("LOCATION.JS (fetchPredictionsForLocation): API Response status:", response.status);
+        dismissToast('prediction-toast');
         if (!response.ok) {
-            return response.json().then(errData => { // Try to parse JSON error from backend
-                 throw new Error(errData.error || `خطأ بالخادم: ${response.status} ${response.statusText}`);
-            }).catch(() => { // Fallback if error response is not JSON
-                throw new Error(`خطأ بالخادم: ${response.status} ${response.statusText}`);
-            });
+            return response.json().then(errData => {
+                 throw new Error(errData.error || `خطأ بالخادم: ${response.status}`);
+            }).catch(() => { throw new Error(`خطأ بالخادم: ${response.status}`); });
         }
         return response.json();
     })
     .then(data => {
-        console.log("LOCATION.JS (fetchPredictionsForLocation): API Response data (raw):", JSON.stringify(data)); // Log the whole response as string
-        if (data.error) {
-            console.error("LOCATION.JS (fetchPredictionsForLocation): API returned an error in data object:", data.error);
-            throw new Error(data.error);
-        }
-        window.latestPredictionData = data.fences; // This should be an array
-        console.log("LOCATION.JS (fetchPredictionsForLocation): Stored window.latestPredictionData (type: " + typeof window.latestPredictionData + ", isArray: " + Array.isArray(window.latestPredictionData) + "):", window.latestPredictionData);
+        if (data.error) throw new Error(data.error);
+        window.latestPredictionData = data.fences || [];
+        console.log("LOCATION.JS: Predictions received (count: " + window.latestPredictionData.length + ")");
         updateOpenPopupWithPrediction();
-        if (!silently && data.fences && data.fences.length > 0) {
-            // showToast('تم تحديث توقعات نقاط التفتيش.', 'success', 2500);
-        } else if (!silently && (!data.fences || data.fences.length === 0)) {
-            // showToast('لا توجد توقعات لنقاط قريبة.', 'info', 3000);
-        }
+        // if (!silently && data.fences && data.fences.length > 0) {
+        //     showToast('تم تحديث توقعات نقاط التفتيش.', 'success', 2500);
+        // }
     })
     .catch(error => {
-        console.error('LOCATION.JS (fetchPredictionsForLocation): Prediction fetch error:', error);
-        if (!silently) showToast(`خطأ في جلب التوقعات: ${error.message}`, 'danger', 7000);
-        window.latestPredictionData = null; // Clear old data on error
-        updateOpenPopupWithPrediction(); // Update open popup to show error/unavailable
+        dismissToast('prediction-toast');
+        console.error('LOCATION.JS: Prediction fetch error:', error);
+        if (!silently) showToast(`خطأ في جلب التوقعات: ${error.message}`, 'danger', 5000);
+        if (window.latestPredictionData !== null) {
+            window.latestPredictionData = null;
+            updateOpenPopupWithPrediction();
+        }
     });
 }
 
 function updateOpenPopupWithPrediction() {
-    if (!map) {
-        console.warn("LOCATION.JS (updateOpenPopupWithPrediction): Map object not available.");
-        return;
-    }
-    const latestDataCount = window.latestPredictionData ? window.latestPredictionData.length : 'null or empty';
-    const isLatestDataArray = Array.isArray(window.latestPredictionData);
-    console.log(`LOCATION.JS (updateOpenPopupWithPrediction): Called. latestPredictionData count: ${latestDataCount}, isArray: ${isLatestDataArray}`);
+    if (!map) return;
+    const isDataArray = Array.isArray(window.latestPredictionData);
 
     map.eachLayer(function (layer) {
         if (layer instanceof L.Marker && layer.isPopupOpen() && layer.options.fenceData) {
-            const fenceIdFromMarker = layer.options.fenceData.id; 
-            console.log(`LOCATION.JS (updateOpenPopupWithPrediction): Found open popup for fence ID from marker: ${fenceIdFromMarker} (type: ${typeof fenceIdFromMarker})`);
-            
-            const popupElement = layer.getPopup().getElement();
-            if (!popupElement) {
-                console.warn(`LOCATION.JS (updateOpenPopupWithPrediction): Popup element not found for fence ID: ${fenceIdFromMarker}`);
-                return;
-            }
+            const fenceId = layer.options.fenceData.id;
+            const popupEl = layer.getPopup().getElement();
+            if (!popupEl) return;
+            const placeholder = popupEl.querySelector(`.prediction-placeholder[data-fence-id="${fenceId}"]`);
+            if (!placeholder) return;
 
-            const placeholder = popupElement.querySelector(`.prediction-placeholder[data-fence-id="${fenceIdFromMarker}"]`);
-            if (!placeholder) {
-                 console.warn(`LOCATION.JS (updateOpenPopupWithPrediction): Prediction placeholder not found in open popup for fence ID: ${fenceIdFromMarker}`);
-                 return;
+            let prediction = null;
+            if (isDataArray) {
+                prediction = window.latestPredictionData.find(p => String(p.id) === String(fenceId));
             }
-
-            let relevantPrediction = null;
-            if (window.latestPredictionData && Array.isArray(window.latestPredictionData) && window.latestPredictionData.length > 0) {
-                relevantPrediction = window.latestPredictionData.find(p => {
-                    // console.log(`Comparing API prediction ID: ${p.id} (type: ${typeof p.id}) with Marker fence ID: ${fenceIdFromMarker} (type: ${typeof fenceIdFromMarker})`);
-                    return String(p.id) === String(fenceIdFromMarker);
-                });
-            } else {
-                console.log("LOCATION.JS (updateOpenPopupWithPrediction): window.latestPredictionData is null, empty, or not an array.");
-            }
-            
-            console.log(`LOCATION.JS (updateOpenPopupWithPrediction): Relevant prediction for fence ID ${fenceIdFromMarker}:`, JSON.stringify(relevantPrediction, null, 2));
-            updateOpenPopupWithSpecificPrediction(placeholder, relevantPrediction);
+            updateOpenPopupWithSpecificPrediction(placeholder, prediction);
         }
     });
 }
 
 function updateOpenPopupWithSpecificPrediction(placeholderElement, predictionData) {
     if (!placeholderElement) return;
-
-    let predictionHTML = '';
+    let html = '';
     if (predictionData) {
-        if (predictionData.prediction_success === true && typeof predictionData.predicted_wait_minutes === 'number') {
+        if (predictionData.prediction_success && typeof predictionData.predicted_wait_minutes === 'number') {
             const waitTime = Math.round(predictionData.predicted_wait_minutes);
-            const formattedWaitTime = formatWaitTime(waitTime);
-            
-            // حساب زمن الوصول إذا كان الموقع الحالي متاحاً
+            const formattedWait = formatWaitTime(waitTime);
             let combinedTimeHTML = '';
-            if (currentUserLocation && predictionData.distance_km) {
-                const travelTimeMinutes = calculateTravelTime(predictionData.distance_km);
-                const totalTimeMinutes = waitTime + travelTimeMinutes;
-                const formattedTotalTime = formatWaitTime(totalTimeMinutes);
-                
-                // حساب وقت الوصول النهائي
-                const now = new Date();
-                const arrivalTime = new Date(now.getTime() + totalTimeMinutes * 60000);
-                let hours = arrivalTime.getHours();
-                const minutes = arrivalTime.getMinutes();
-                const ampm = hours >= 12 ? 'PM' : 'AM';
-                hours = hours % 12;
-                hours = hours ? hours : 12; // الساعة 0 تصبح 12
-                const formattedArrivalTime = `${hours}:${minutes < 10 ? '0' + minutes : minutes} ${ampm}`;
-
-                
+            if (currentUserLocation && typeof predictionData.distance_km === 'number' && predictionData.distance_km >= 0) {
+                const travelTime = calculateTravelTime(predictionData.distance_km);
+                const totalTime = waitTime + travelTime;
+                const formattedTotal = formatWaitTime(totalTime);
+                const arrival = new Date(Date.now() + totalTime * 60000);
+                let hrs = arrival.getHours();
+                const mins = arrival.getMinutes();
+                const ampm = hrs >= 12 ? 'مساءً' : 'صباحًا';
+                hrs = hrs % 12; hrs = hrs ? hrs : 12;
+                const formattedArrival = `${hrs}:${mins < 10 ? '0'+mins : mins} ${ampm}`;
                 combinedTimeHTML = `
                     <hr class="prediction-separator">
                     <div class="popup-item prediction-info">
                         <span class="popup-icon"><i class="fas fa-hourglass-half"></i></span>
-                        <span>الوقت المتوقع للوصول: <strong>${formattedTotalTime}</strong></span>
+                        <span>الوقت الإجمالي المتوقع: <strong>${formattedTotal}</strong></span>
                     </div>
                     <div class="popup-item arrival-time-info">
                         <span class="popup-icon"><i class="fas fa-clock"></i></span>
-                        <span>عند الساعة  : <strong>${formattedArrivalTime}</strong></span>
+                        <span>وقت الوصول التقديري: <strong>${formattedArrival}</strong></span>
                     </div>`;
             } else {
                 combinedTimeHTML = `
                     <hr class="prediction-separator">
                     <div class="popup-item prediction-info">
                         <span class="popup-icon"><i class="fas fa-hourglass-half"></i></span>
-                        <span>وقت الانتظار المتوقع: <strong>${formattedWaitTime}</strong></span>
+                        <span>وقت الانتظار المتوقع: <strong>${formattedWait}</strong></span>
                     </div>`;
             }
-
-            predictionHTML = combinedTimeHTML;
-                
+            html = combinedTimeHTML;
             if (predictionData.prediction_debug_info) {
-                predictionHTML += `<div class="popup-item text-muted small">${predictionData.prediction_debug_info}</div>`;
+                html += `<div class="popup-item text-muted small" style="font-size:0.75em; text-align:right; color: #888; margin-top:3px;">${predictionData.prediction_debug_info}</div>`;
             }
         } else if (predictionData.prediction_error) {
-            predictionHTML = `
-                <hr class="prediction-separator">
-                <div class="popup-item prediction-error">
-                    <span class="popup-icon"><i class="fas fa-exclamation-circle"></i></span>
-                    <span>التوقع: ${predictionData.prediction_error}</span>
-                </div>`;
+            html = `<hr class="prediction-separator"><div class="popup-item prediction-error"><span class="popup-icon"><i class="fas fa-exclamation-circle"></i></span><span>التوقع: ${predictionData.prediction_error}</span></div>`;
         } else {
-            predictionHTML = `
-                <hr class="prediction-separator">
-                <div class="popup-item text-muted">
-                    <span class="popup-icon"><i class="fas fa-info-circle"></i></span>
-                    <span>لا توجد توقعات تفصيلية لهذه النقطة حالياً.</span>
-                </div>`;
+            html = `<hr class="prediction-separator"><div class="popup-item text-muted"><span class="popup-icon"><i class="fas fa-info-circle"></i></span><span>لا توجد توقعات تفصيلية لهذه النقطة حالياً.</span></div>`;
         }
     } else {
         if (currentUserLocation) {
-            predictionHTML = `
-                <hr class="prediction-separator">
-                <div class="popup-item text-muted">
-                    <span class="popup-icon"><i class="fas fa-info-circle"></i></span>
-                    <span>لا تتوفر توقعات لهذه النقطة حاليًا.</span>
-                </div>`;
+            html = `<hr class="prediction-separator"><div class="popup-item text-muted"><span class="popup-icon"><i class="fas fa-sync fa-spin"></i></span><span>جاري البحث عن توقعات لهذه النقطة...</span></div>`;
         } else {
-            predictionHTML = `
-                <hr class="prediction-separator">
-                <div class="popup-item text-muted">
-                    <span class="popup-icon"><i class="fas fa-map-marker-alt"></i></span>
-                    <span>حدد موقعك للحصول على التوقعات.</span>
-                </div>`;
+            html = `<hr class="prediction-separator"><div class="popup-item text-muted"><span class="popup-icon"><i class="fas fa-map-marker-alt"></i></span><span>حدد موقعك للحصول على التوقعات.</span></div>`;
         }
     }
-    placeholderElement.innerHTML = predictionHTML;
+    placeholderElement.innerHTML = html;
 }

@@ -57,7 +57,7 @@ function toggleSidebar() {
     const isActive = sidebar.classList.toggle('active');
 
     // For desktop, add/remove a class to contentWrapper for CSS to adjust floating elements
-    if (window.innerWidth >= 992) {
+    if (window.innerWidth >= 1300) {
         if (isActive) {
             contentWrapper.classList.add('sidebar-active');
         } else {

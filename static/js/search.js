@@ -78,7 +78,7 @@ function performMainSearch() {
         const localResults = allFencesNames.filter(name => 
             name.toLowerCase().includes(searchTerm.toLowerCase()) || 
             name.toLowerCase().startsWith(searchTerm.toLowerCase())
-        ).slice(0, 5);
+        ).slice(0, 1);
 
         if (localResults.length > 0) {
             renderLocalSearchResults(localResults, searchTerm);

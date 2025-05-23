@@ -5,38 +5,38 @@ document.addEventListener('DOMContentLoaded', function() {
     if (!mapDiv) {
         console.error("MAIN_MAP.JS: Map div (#map) not found. Cannot initialize map.");
         document.body.innerHTML = '<div style="padding:20px;text-align:center;color:red;font-size:1.2em;">خطأ حرج: حاوية الخريطة غير موجودة. لا يمكن تشغيل التطبيق.</div>';
-        return; 
+        return;
     }
 
-    initializeMap(); 
-    
-    if (map) {
-        parseInitialFenceData(); 
-        processAndDisplayFences(); 
-        attemptInitialUserLocation(); 
+    initializeMap(); // From map_config.js
 
-        setupUIEventListeners(); 
-        setupSearchEventListeners(); 
-        
-        // Check if setupRoutePlannerEventListeners is defined before calling
+    if (map) {
+        parseInitialFenceData(); // Assuming this function exists elsewhere and populates initialFencesData
+        processAndDisplayFences(); // Assuming this function exists and uses initialFencesData
+
+        // Attempt to get user location. This will use stored location if available & suitable,
+        // then start watching for live updates. Predictions will be fetched internally by location.js.
+        attemptInitialUserLocation(); // From location.js
+
+        setupUIEventListeners(); // Assuming this function exists
+        setupSearchEventListeners(); // Assuming this function exists
+
         if (typeof setupRoutePlannerEventListeners === 'function') {
-            setupRoutePlannerEventListeners(); 
+            setupRoutePlannerEventListeners();
         } else {
-            console.warn("MAIN_MAP.JS: setupRoutePlannerEventListeners is not defined. Route planning features might be affected.");
+            console.warn("MAIN_MAP.JS: setupRoutePlannerEventListeners is not defined.");
         }
 
-
+        // Map invalidation for potential layout issues (e.g., hidden map div)
         setTimeout(() => {
             if (map) {
                 map.invalidateSize();
                 if (map.getSize().x === 0 || map.getSize().y === 0) {
-                    console.error("MAP STILL HAS ZERO SIZE. CHECK CSS LAYOUT.");
+                    console.error("MAP STILL HAS ZERO SIZE. CHECK CSS LAYOUT AND TIMING.");
                 }
             }
-        }, 300);
-if (currentUserLocation) {
-    fetchPredictionsForLocation(currentUserLocation, true); // جلب صامت (بدون رسائل)
-}
+        }, 350); // Slightly increased delay
+
         window.addEventListener('resize', debounce(() => {
             if (map) {
                 map.invalidateSize();
@@ -64,27 +64,17 @@ if (currentUserLocation) {
                     }
 
                     if (relevantPrediction) {
-                        console.log("MAIN_MAP.JS: Updating open popup with existing prediction data for fence ID:", fenceId, "Data:", relevantPrediction);
-                        updateOpenPopupWithSpecificPrediction(placeholder, relevantPrediction);
-                    } else if (currentUserLocation) {
-                        console.log("MAIN_MAP.JS: No specific prediction for fence ID:", fenceId, "in current batch (window.latestPredictionData). User location known. Triggering silent fetch IF NOT RECENTLY FETCHED.");
-                        // To prevent rapid re-fetching, you might add a timestamp check here
-                        // For now, it will always re-fetch if data for this specific fence isn't immediately available.
-                        placeholder.innerHTML = `
-                            <hr class="prediction-separator">
-                            <div class="popup-item text-muted" style="font-size: 0.85em;">
-                                <span class="popup-icon"><i class="fas fa-spinner fa-spin"></i></span>
-                                <span>جاري تحديث التوقعات...</span>
-                            </div>`;
-                        fetchPredictionsForLocation(currentUserLocation, true); // true for silent fetch
+                        console.log("MAIN_MAP.JS: Updating open popup with existing prediction data for fence ID:", fenceId);
+                        updateOpenPopupWithSpecificPrediction(placeholder, relevantPrediction); // From location.js
+                    } else if (currentUserLocation) { // currentUserLocation from location.js
+                        console.log("MAIN_MAP.JS: No specific prediction for fence ID:", fenceId, ". User location known. Placeholder will show loading state.");
+                        // location.js's updateOpenPopupWithSpecificPrediction handles the "loading..." state if no specific prediction.
+                        // If you want to trigger a specific fetch for this *one* point, that's more complex.
+                        // For now, rely on the periodic/movement-based fetch in location.js
+                        updateOpenPopupWithSpecificPrediction(placeholder, null); // Show loading/unavailable state
                     } else {
                         console.log("MAIN_MAP.JS: No user location to fetch predictions for fence ID:", fenceId);
-                        placeholder.innerHTML = `
-                            <hr class="prediction-separator">
-                            <div class="popup-item text-muted" style="font-size: 0.85em;">
-                                <span class="popup-icon"><i class="fas fa-map-marker-alt"></i></span>
-                                <span>حدد موقعك للحصول على التوقعات.</span>
-                            </div>`;
+                         updateOpenPopupWithSpecificPrediction(placeholder, null); // Show "locate yourself" state
                     }
                 } else {
                     console.warn("MAIN_MAP.JS: Prediction placeholder NOT found in open popup for fence ID:", fenceId);
@@ -108,3 +98,38 @@ function debounce(func, delay) {
         timeout = setTimeout(() => func.apply(context, args), delay);
     };
 }
+
+// Make sure parseInitialFenceData() and processAndDisplayFences() are defined
+// Example stubs if they are not already in your project:
+/*
+let initialFencesData = []; // Should be populated by Django template or an API call
+
+function parseInitialFenceData() {
+    const fencesDataElement = document.getElementById('fences-data');
+    if (fencesDataElement) {
+        try {
+            initialFencesData = JSON.parse(fencesDataElement.textContent);
+            console.log("MAIN_MAP.JS: Parsed initial fence data:", initialFencesData.length, "fences");
+        } catch (e) {
+            console.error("MAIN_MAP.JS: Error parsing initial fence data:", e);
+        }
+    } else {
+        console.warn("MAIN_MAP.JS: fences-data script tag not found.");
+    }
+}
+
+function processAndDisplayFences() {
+    if (!map || !initialFencesData || initialFencesData.length === 0) {
+        console.warn("MAIN_MAP.JS: Map not ready or no initial fences to display.");
+        return;
+    }
+    initialFencesData.forEach(fence => {
+        // This is just an example, adapt to your actual addCheckpointMarkerToMap function
+        if (typeof addCheckpointMarkerToMap === 'function') {
+            addCheckpointMarkerToMap(fence);
+        } else {
+            console.warn("MAIN_MAP.JS: addCheckpointMarkerToMap function not found. Cannot display fence:", fence.name);
+        }
+    });
+}
+*/

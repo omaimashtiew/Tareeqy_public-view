@@ -194,7 +194,8 @@ html, body {
 .footer-nav {
     height: var(--footer-height);
     flex-shrink: 0;
-    background-color: var(--primary-color) !important;
+    /* background-color: var(--primary-color) !important; */
+    background: var(--header-gradient);
     box-shadow: 0 -2px 5px rgba(0, 0, 0, 0.1);
     z-index: 1020;
 }
@@ -319,19 +320,10 @@ html, body {
 @media (min-width: 992px) {
     .app-header .search-container { margin-right: 15px; margin-left: auto; max-width: 400px; } /* Wider search */
     .content-wrapper { /* flex-direction: row-reverse; already set for RTL globally */ }
-    .sidebar {
-        position: relative; 
-        transform: translateX(0); 
-        width: var(--sidebar-width-desktop) !important; 
-        height: 100%; 
-        flex-shrink: 0; 
-        box-shadow: -2px 0 5px rgba(0,0,0,0.05); 
-        bottom: auto; top: auto;
-        transition: none; 
-    }
-    .status-legend { right: calc(var(--sidebar-width-desktop) + 20px); left: auto; bottom: 20px; }
-    .fab-location { left: auto; right: calc(var(--sidebar-width-desktop) + 20px); }
-    .zoom-controls { left: auto; right: calc(var(--sidebar-width-desktop) + 20px); }
+    
+    .status-legend { right: 10px; bottom: 4rem; }
+    .fab-location { left: 10px; }
+    .zoom-controls { left: 10px; }
     .btn-close-sidebar { display: none; } 
     .footer-nav .nav-item span { font-size: calc(var(--base-font-size) * 0.85); } /* Slightly larger footer text */
     .footer-nav .nav-item i { font-size: calc(var(--base-font-size) * 1.4); } /* Slightly larger footer icons */

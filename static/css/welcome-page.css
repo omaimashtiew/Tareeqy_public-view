@@ -38,10 +38,10 @@ html {
     width: 100%;
     text-align: center;
     padding: 30px;
-    background-color: white;
     border-radius: 20px;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
     animation: fadeIn 0.8s ease-out;
+    position: relative;
+   
 }
 
 @keyframes fadeIn {
@@ -105,20 +105,22 @@ html {
     font-weight: 700;
     margin-bottom: 5px;
     color: var(--primary-color);
+    position: relative;
 }
 
 .welcome-subtitle {
     font-size: 1.2rem;
     color: var(--secondary-color);
     margin-bottom: 20px;
-    opacity: 0.8;
+    position: relative;
 }
 
 .info-text {
     margin-bottom: 30px;
-    color: #666;
+    color: #0f0f0f;
     line-height: 1.5;
     font-size: larger;
+    position: relative;
 }
 
 .location-permission {
@@ -130,6 +132,7 @@ html {
     margin-bottom: 30px;
     text-align: right; /* For RTL text alignment */
     border: 1px solid rgba(156, 39, 176, 0.1);
+    position: relative;
 }
 
 .permission-icon {
@@ -144,18 +147,21 @@ html {
     background-color: white;
     border-radius: 50%;
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+    position: relative;
 }
 
 .permission-text h3 {
     font-size: 1.1rem;
     margin-bottom: 5px;
     color: var(--primary-color);
+    position: relative;
 }
 
 .permission-text p {
     font-size: 0.9rem;
     margin: 0;
-    color: #666;
+    color: #0e0d0d;
+    position: relative;
 }
 
 .start-button {
@@ -174,6 +180,7 @@ html {
     transition: all 0.3s ease;
     box-shadow: 0 4px 15px rgba(156, 39, 176, 0.3);
     margin-bottom: 20px;
+    position: relative;
 }
 
 
@@ -202,11 +209,13 @@ html {
 .language-selector {
     margin-top: 20px;
     font-size: 0.9rem;
-    color: #777;
+    color: #080808;
+    position: relative;
+
 }
 
 .language-selector a {
-    color: #777;
+    color: #131212;
     text-decoration: none;
     transition: color 0.3s ease;
     margin: 0 5px;
@@ -260,4 +269,36 @@ html {
     .welcome-container {
         min-height: -webkit-fill-available;
     }
+}
+
+.welcome-background{
+    background-image: url(../images/welcome-image.png);
+    background-repeat: no-repeat;
+    background-size: cover;
+    background-position: center center;
+    background-origin: border-box;
+    width: 100%;
+    height: 100vh;
+    z-index: 0;
+    position: absolute;
+    left: 0;
+    top: 0;
+   
+    
+}
+
+.welcome-content-background{
+    background-color: #ffffffcf;
+    border-radius: 20px;
+    animation: fadeIn 0.1s ease-out;
+    width: 100%;
+    height: 100%;
+    position: absolute;
+    z-index: 0;
+    box-shadow: 0 8px 32px 0 rgba( 31, 38, 135, 0.37 );
+    backdrop-filter: blur( 0.01px );
+    -webkit-backdrop-filter: blur( 4px );
+    transform: translate(-50%, -50%);
+    top: 50%;
+    left: 50%;
 }
