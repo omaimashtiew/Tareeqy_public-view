@@ -13,5 +13,6 @@ urlpatterns = [
     path('api/get_predictions/', views.get_predictions_for_location, name='api_get_predictions'),
     path('api/search_city_or_fence/', views.search_city_or_fence, name='api_search_city_or_fence'),
     path('api/shortest-wait-by-city/', views.api_shortest_wait_by_city, name='api_shortest_wait_by_city'),
+
     
 ]

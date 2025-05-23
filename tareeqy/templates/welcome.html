@@ -11,6 +11,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
     <!-- Ensure you have a welcome_style.css or welcome-page.css as linked -->
     <link rel="stylesheet" href="{% static 'css/welcome-page.css' %}"> <!-- Or welcome-page.css -->
+    <link rel="manifest" href="{% static 'manifest.json' %}">
+<meta name="theme-color" content="#000000"/>
 </head>
 <body>
     <div class="welcome-container">
@@ -58,5 +60,62 @@
         const MAP_PAGE_URL = "{% url 'tareeqy_app:map_page' %}";
     </script>
     <script src="{% static 'js/welcome.js' %}"></script>
+    <script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('{% static "sw.js" %}')
+      .then(registration => console.log('ServiceWorker registered'))
+      .catch(err => console.log('ServiceWorker registration failed: ', err));
+  });
+}
+</script>
+
+<script>
+// تخزين event prompt globally
+let deferredPrompt;
+
+window.addEventListener('beforeinstallprompt', (e) => {
+  // منع المتصفح من العرض التلقائي
+  e.preventDefault();
+  // حفظ event لإظهاره لاحقًا
+  deferredPrompt = e;
+  // إظهار زر التثبيت المخصص
+  showInstallButton();
+});
+
+function showInstallButton() {
+  const installBtn = document.createElement('button');
+  installBtn.id = 'install-btn';
+  installBtn.innerHTML = `
+    <i class="fas fa-download"></i> تثبيت التطبيق
+  `;
+  installBtn.style.cssText = `
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 1000;
+    padding: 10px 15px;
+    background: #2A5C99;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+  `;
+  
+  document.body.appendChild(installBtn);
+  
+  installBtn.addEventListener('click', async () => {
+    if (!deferredPrompt) return;
+    // عرض prompt التثبيت
+    deferredPrompt.prompt();
+    // انتظار اختيار المستخدم
+    const { outcome } = await deferredPrompt.userChoice;
+    console.log(`User response: ${outcome}`);
+    // إزالة الزر بعد التثبيت
+    installBtn.remove();
+    deferredPrompt = null;
+  });
+}
+</script>
 </body>
 </html>

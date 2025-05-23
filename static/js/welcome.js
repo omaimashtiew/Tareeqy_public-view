@@ -1,4 +1,6 @@
 // static/js/welcome.js
+
+
 document.addEventListener('DOMContentLoaded', function() {
     const startBtn = document.getElementById('start-btn');
 
@@ -68,3 +70,17 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 }); 
+
+
+
+// مسح أي تخزين محلي سابق
+localStorage.removeItem('installDismissed');
+
+window.addEventListener('load', () => {
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('{% static "sw.js" %}')
+      .then(reg => {
+        reg.update(); // فرض تحديث الـ Service Worker
+      });
+  }
+});

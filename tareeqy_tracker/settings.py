@@ -140,3 +140,19 @@ STATICFILES_DIRS = [os.path.join(BASE_DIR, 'static')]
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+STATICFILES_DIRS = [
+    os.path.join(BASE_DIR, 'static'),
+]
+
+PWA_APP_NAME = 'Tareeqy'
+PWA_APP_DESCRIPTION = " اخبار الطرق والحواجز"
+PWA_APP_THEME_COLOR = '#000000'
+PWA_APP_BACKGROUND_COLOR = '#ffffff'
+# أضف هذه الإعدادات
+STATIC_URL = '/static/'
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')  # مهم للإنتاج
+STATICFILES_DIRS = [os.path.join(BASE_DIR, 'static')]
+
+# إعدادات PWA الإضافية
+PWA_SERVICE_WORKER_PATH = os.path.join(BASE_DIR, 'static', 'sw.js')
