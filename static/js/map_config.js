@@ -79,11 +79,11 @@ function initializeMap() {
             preferCanvas: true
         }).setView(PALESTINE_CENTER, DEFAULT_ZOOM);
 
-        L.tileLayer('https{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors',
-            maxZoom: 19,
-            detectRetina: true
-        }).addTo(map);
+       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors',
+    maxZoom: 19,
+    detectRetina: true
+}).addTo(map);
 
         Object.values(markerLayers).forEach(layer => layer.addTo(map));
         console.log("Map initialized.");
