@@ -156,3 +156,13 @@ STATICFILES_DIRS = [os.path.join(BASE_DIR, 'static')]
 
 # إعدادات PWA الإضافية
 PWA_SERVICE_WORKER_PATH = os.path.join(BASE_DIR, 'static', 'sw.js')
+
+import os
+
+DEBUG = False
+ALLOWED_HOSTS = ['*']
+
+# static files
+STATIC_URL = '/static/'
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+
