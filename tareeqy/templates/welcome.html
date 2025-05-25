@@ -53,7 +53,7 @@
             <button id="ios-install-btn" class="start-button mt-3">
   <i class="fas fa-share-square me-2"></i> أضف التطبيق للشاشة الرئيسية
 </button>
-<button id="desktop-install-btn" class="start-button mt-3" style="display: none;">
+<button id="desktop-install-btn" class="start-button mt-3" >
   <i class="fas fa-download me-2"></i> تثبيت التطبيق على هذا الجهاز
 </button>
 
@@ -131,6 +131,27 @@ window.addEventListener('load', () => {
     });
   } else {
     iosBtn.style.display = 'none'; // إخفاء الزر في أي بيئة غير Safari iOS
+  }
+});
+</script>
+
+
+<script>
+function isFirefox() {
+  return navigator.userAgent.toLowerCase().includes('firefox');
+}
+
+window.addEventListener('load', () => {
+  if (isFirefox()) {
+    const btn = document.createElement('button');
+    btn.className = 'start-button mt-3';
+    btn.innerHTML = `<i class="fas fa-info-circle me-2"></i> تثبيت يدوي عبر متصفح Firefox`;
+
+    btn.onclick = () => {
+      alert("للتثبيت على Firefox:\n1. اضغط على زر القائمة (⋮).\n2. اختر 'Install Site as App' أو 'Save to Desktop'.");
+    };
+
+    document.querySelector('.welcome-content').appendChild(btn);
   }
 });
 </script>
