@@ -202,10 +202,6 @@ html {
     margin-left: 10px; /* For RTL, spinner on left if icon is on right */
 }
 
-.start-button:hover i {
-    /* transform: translateX(5px); /* Adjust arrow direction for RTL on hover */
-}
-
 .language-selector {
     margin-top: 20px;
     font-size: 0.9rem;

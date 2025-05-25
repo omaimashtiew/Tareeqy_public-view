@@ -1,4 +1,4 @@
-const CACHE_VERSION = Date.now(); // رقم فريد في كل مرة
+const CACHE_VERSION = Date.now();
 const CACHE_NAME = `tareeqy-${CACHE_VERSION}`;
 
 self.addEventListener('install', (event) => {
@@ -6,10 +6,19 @@ self.addEventListener('install', (event) => {
     caches.open(CACHE_NAME)
       .then(cache => cache.addAll([
         '/',
+        '/static/css/styles.css',
         '/static/css/welcome-page.css',
-        '/static/js/app.js'
+        '/static/js/map_config.js',
+        '/static/js/ui_interactions.js',
+        '/static/js/data_handler.js',
+        '/static/js/location.js',
+        '/static/js/search.js',
+        '/static/js/route_planner.js',
+        '/static/js/main_map.js',
+        '/static/icons/cover.jpg',
+        '/static/manifest.json'
       ]))
-      .then(() => self.skipWaiting()) // تخطي مرحلة الانتظار
+      .then(() => self.skipWaiting())
   );
 });
 

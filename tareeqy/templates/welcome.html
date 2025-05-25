@@ -13,6 +13,11 @@
     <link rel="stylesheet" href="{% static 'css/welcome-page.css' %}"> <!-- Or welcome-page.css -->
     <link rel="manifest" href="{% static 'manifest.json' %}">
 <meta name="theme-color" content="#000000"/>
+
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<link rel="apple-touch-icon" href="/static/icons/cover.jpg">
+
 </head>
 <body>
     <div class="welcome-container">
@@ -45,7 +50,14 @@
                 <span>ابدأ الآن</span>
                 <i class="fas fa-arrow-left me-2"></i>
             </button>
-            
+            <button id="ios-install-btn" class="start-button mt-3">
+  <i class="fas fa-share-square me-2"></i> أضف التطبيق للشاشة الرئيسية
+</button>
+<button id="desktop-install-btn" class="start-button mt-3" style="display: none;">
+  <i class="fas fa-download me-2"></i> تثبيت التطبيق على هذا الجهاز
+</button>
+
+
             <div class="language-selector">
                 <a href="?lang=en">English</a> | 
                 <a href="?lang=ar" class="active">العربية</a>
@@ -71,51 +83,57 @@ if ('serviceWorker' in navigator) {
 </script>
 
 <script>
-// تخزين event prompt globally
-let deferredPrompt;
+let deferredPrompt = null;
+
+function isIosSafari() {
+  const ua = window.navigator.userAgent;
+  return /iPhone|iPad|iPod/.test(ua) && /Safari/.test(ua) && !/CriOS|FxiOS/.test(ua);
+}
 
 window.addEventListener('beforeinstallprompt', (e) => {
-  // منع المتصفح من العرض التلقائي
   e.preventDefault();
-  // حفظ event لإظهاره لاحقًا
   deferredPrompt = e;
-  // إظهار زر التثبيت المخصص
-  showInstallButton();
-});
 
-function showInstallButton() {
-  const installBtn = document.createElement('button');
-  installBtn.id = 'install-btn';
-  installBtn.innerHTML = `
-    <i class="fas fa-download"></i> تثبيت التطبيق
-  `;
-  installBtn.style.cssText = `
-    position: fixed;
-    bottom: 20px;
-    right: 20px;
-    z-index: 1000;
-    padding: 10px 15px;
-    background: #2A5C99;
-    color: white;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-  `;
-  
-  document.body.appendChild(installBtn);
-  
-  installBtn.addEventListener('click', async () => {
-    if (!deferredPrompt) return;
-    // عرض prompt التثبيت
-    deferredPrompt.prompt();
-    // انتظار اختيار المستخدم
-    const { outcome } = await deferredPrompt.userChoice;
-    console.log(`User response: ${outcome}`);
-    // إزالة الزر بعد التثبيت
-    installBtn.remove();
-    deferredPrompt = null;
-  });
-}
+    // Chrome / Edge Desktop or Android
+    const desktopInstallBtn = document.getElementById('desktop-install-btn');
+    desktopInstallBtn.style.display = 'block';
+    desktopInstallBtn.addEventListener('click', async () => {
+      if (!deferredPrompt) return;
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      if (outcome === 'accepted') {
+        console.log('تم تثبيت التطبيق');
+      } else {
+        console.log('المستخدم رفض التثبيت');
+      }
+      desktopInstallBtn.style.display = 'none';
+      deferredPrompt = null;
+    });
+  }
+);
 </script>
+
+<script>
+function isIosSafari() {
+  const ua = window.navigator.userAgent;
+  return /iPhone|iPad|iPod/.test(ua) &&
+         /Safari/.test(ua) &&
+         !/CriOS|FxiOS|EdgiOS|OPiOS/.test(ua); // excludes Chrome, Firefox, Edge, Opera on iOS
+}
+
+window.addEventListener('load', () => {
+  const iosBtn = document.getElementById('ios-install-btn');
+
+  if (isIosSafari()) {
+    iosBtn.style.display = 'block';
+    iosBtn.addEventListener('click', () => {
+      alert("لإضافة التطبيق للشاشة الرئيسية:\n1. اضغط على زر المشاركة (المربع والسهم).\n2. اختر 'إضافة إلى الشاشة الرئيسية'.");
+    });
+  } else {
+    iosBtn.style.display = 'none'; // إخفاء الزر في أي بيئة غير Safari iOS
+  }
+});
+</script>
+
 </body>
 </html>
