@@ -68,6 +68,10 @@ MIDDLEWARE = [
 ROOT_URLCONF = "tareeqy_tracker.urls"
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
+CSRF_TRUSTED_ORIGINS = [
+    "https://tareeqyyproject-production.up.railway.app",
+]
+
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
