@@ -26,7 +26,11 @@ from telethon.sync import TelegramClient
 DEBUG = False
 import os 
 STATIC_URL = '/static/'
-STATICFILES_DIRS = [BASE_DIR / 'static']  # فقط في التطوير
+STATICFILES_DIRS = [
+    os.path.join(BASE_DIR, 'tareeqy_tracker/static'),  # مسار الملفات المصدر
+]
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')  # للملفات المجمعة في الإنتاج
+
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 ALLOWED_HOSTS =  ['*']
 TELEGRAM_API_ID = 28313142
@@ -152,18 +156,12 @@ STATICFILES_DIRS = [os.path.join(BASE_DIR, 'static')]
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-STATICFILES_DIRS = [
-    os.path.join(BASE_DIR, 'static'),
-]
 
 PWA_APP_NAME = 'Tareeqy'
 PWA_APP_DESCRIPTION = " اخبار الطرق والحواجز"
 PWA_APP_THEME_COLOR = '#000000'
 PWA_APP_BACKGROUND_COLOR = '#ffffff'
 # أضف هذه الإعدادات
-STATIC_URL = '/static/'
-STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')  # مهم للإنتاج
-STATICFILES_DIRS = [os.path.join(BASE_DIR, 'static')]
 
 # إعدادات PWA الإضافية
 PWA_SERVICE_WORKER_PATH = os.path.join(BASE_DIR, 'static', 'sw.js')

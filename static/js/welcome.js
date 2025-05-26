@@ -78,7 +78,7 @@ localStorage.removeItem('installDismissed');
 
 window.addEventListener('load', () => {
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('{% static "sw.js" %}')
+navigator.serviceWorker.register('/static/sw.js')
       .then(reg => {
         reg.update(); // فرض تحديث الـ Service Worker
       });

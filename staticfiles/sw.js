@@ -15,8 +15,8 @@ self.addEventListener('install', (event) => {
         '/static/js/search.js',
         '/static/js/route_planner.js',
         '/static/js/main_map.js',
-        '/static/icons/cover.jpg',
-        '/static/manifest.json'
+        '/static/icons/cover1.jpg',  // صححت اسم الصورة
+        '/static/manifest.json'      // أضفت / في البداية
       ]))
       .then(() => self.skipWaiting())
   );
