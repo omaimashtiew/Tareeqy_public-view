@@ -8,7 +8,7 @@ from fuzzywuzzy import process
 from telethon import TelegramClient, events
 from asgiref.sync import sync_to_async
 from django.conf import settings  # Add this import for settings
-from .models import Fence, FenceStatus  # Ensure this import is correct based on your folder structure
+from tareeqy.models import Fence, FenceStatus
 
 # Setting up logger
 logging.basicConfig(level=logging.INFO)
