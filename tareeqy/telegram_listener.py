@@ -8,7 +8,18 @@ from fuzzywuzzy import process
 from telethon import TelegramClient, events
 from asgiref.sync import sync_to_async
 from django.conf import settings  # Add this import for settings
+
+import os
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'tareeqy_tracker.settings')
+
+import django
+django.setup()
+
 from tareeqy.models import Fence, FenceStatus
+
+from tareeqy.models import Fence, FenceStatus
+import sys, os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Setting up logger
 logging.basicConfig(level=logging.INFO)
@@ -24,7 +35,7 @@ PALESTINE_TZ = pytz.timezone('Asia/Gaza')
 COMMON_PREFIXES = r'^(ال|ل|لل|بال|ول|في|عن|من|عند|وال)'
 
 # Initialize the Telegram Client
-client = TelegramClient("tareeqy_session", API_ID, API_HASH)
+client = TelegramClient("tareeqy_tracker/tareeqy_session", API_ID, API_HASH)
 
 def normalize_text(text):
     """Normalize Arabic text for matching"""
