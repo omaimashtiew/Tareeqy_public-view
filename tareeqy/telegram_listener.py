@@ -24,7 +24,7 @@ PALESTINE_TZ = pytz.timezone('Asia/Gaza')
 COMMON_PREFIXES = r'^(ال|ل|لل|بال|ول|في|عن|من|عند|وال)'
 
 # Initialize the Telegram Client
-client = TelegramClient("session_name", API_ID, API_HASH)
+client = TelegramClient("tareeqy_session", API_ID, API_HASH)
 
 def normalize_text(text):
     """Normalize Arabic text for matching"""
