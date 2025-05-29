@@ -189,7 +189,7 @@ pymysql.install_as_MySQLdb()
 
 
 
-# log يحفظ الأخطاء والاختراقات في ملف 
+# logs يحفظ الأخطاء والاختراقات في ملف 
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
