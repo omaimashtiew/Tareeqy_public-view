@@ -12,6 +12,7 @@ import traceback
 from datetime import datetime, timedelta  # أضف timedelta هنا
 
 from .models import Fence, FenceStatus
+from ratelimit.decorators import ratelimit
 
 # --- AI Predictor Imports (Ensure this block is correctly set up for your project) ---
 try:
@@ -36,6 +37,8 @@ except ImportError as e:
         print("Warning: XGBoost predictor called, but module was not loaded due to import error.")
         return {'success': False, 'error': 'XGBoost predictor module not available.', 'predicted_wait_minutes': None}
 # --- End AI Imports ---
+
+
 
 
 def welcome_view(request):
@@ -95,6 +98,7 @@ def map_view(request):
         }
         return render(request, 'map_view.html', error_context, status=500)
 
+@ratelimit(key='ip', rate='10/m', block=True)
 
 def search_city_or_fence(request):
     """AJAX endpoint to search for fences by city name OR fence name, prioritizing starts-with."""

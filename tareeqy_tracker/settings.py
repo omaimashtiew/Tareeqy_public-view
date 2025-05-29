@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 """
 
 from pathlib import Path
+from decouple import config
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -20,10 +21,10 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = "django-insecure-zgqjmhs9m7sl+68(vqw4(-r*m598uvc*)!(n^lvt1)12^t597j"
+SECRET_KEY = config("DJANGO_SECRET_KEY")
 from telethon.sync import TelegramClient
 
-DEBUG = False
+DEBUG = config("DEBUG", default=False, cast=bool)
 import os 
 STATIC_URL = '/static/'
 STATICFILES_DIRS = [
@@ -32,11 +33,23 @@ STATICFILES_DIRS = [
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')  # للملفات المجمعة في الإنتاج
 
 STATIC_ROOT = BASE_DIR / 'staticfiles'
-ALLOWED_HOSTS =  ['*']
-TELEGRAM_API_ID = 28313142
-TELEGRAM_API_HASH = "1937d577a86353af13fbb92c82f25306"
-phone_number = '+970597141788'
-TELEGRAM_CHANNEL = "@ahwalaltreq"
+ALLOWED_HOSTS = config("DJANGO_ALLOWED_HOSTS", default="").split(",")
+TELEGRAM_API_ID = config("TELEGRAM_API_ID", cast=int)
+TELEGRAM_API_HASH = config("TELEGRAM_API_HASH")
+phone_number = config("TELEGRAM_PHONE")
+TELEGRAM_CHANNEL = config("TELEGRAM_CHANNEL")
+
+# HTTPS settings
+SECURE_SSL_REDIRECT = True
+SESSION_COOKIE_SECURE = True
+CSRF_COOKIE_SECURE = True
+SECURE_HSTS_SECONDS = 31536000  # سنة كاملة
+SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+SECURE_HSTS_PRELOAD = True
+SECURE_BROWSER_XSS_FILTER = True
+SECURE_CONTENT_TYPE_NOSNIFF = True
+X_FRAME_OPTIONS = 'DENY'
+
 
 
 # List of keywords for status
@@ -55,6 +68,7 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "tareeqy",
+    "ratelimit",
 ]
 
 MIDDLEWARE = [
@@ -101,16 +115,15 @@ WSGI_APPLICATION = "tareeqy_tracker.wsgi.application"
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'railway',
-        'USER': 'root',
-        'PASSWORD': 'sbKIFwBCaymbcggetPSaFpblUvThYNSX',
-        'HOST': 'yamabiko.proxy.rlwy.net',
-        'PORT': '26213',
-        'OPTIONS': {
-            'charset': 'utf8mb4',
-        },
+        'NAME': config("DB_NAME"),
+        'USER': config("DB_USER"),
+        'PASSWORD': config("DB_PASSWORD"),
+        'HOST': config("DB_HOST"),
+        'PORT': config("DB_PORT"),
+        'OPTIONS': {'charset': 'utf8mb4'},
     }
 }
+
 
 
 
@@ -168,11 +181,31 @@ PWA_SERVICE_WORKER_PATH = os.path.join(BASE_DIR, 'static', 'sw.js')
 
 import os
 
-DEBUG = False
-ALLOWED_HOSTS = ['*']
 
 # static files
     
 import pymysql
 pymysql.install_as_MySQLdb()
 
+
+
+# log يحفظ الأخطاء والاختراقات في ملف 
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {'format': '{levelname} {asctime} {module} {message}', 'style': '{'},
+    },
+    'handlers': {
+        'file': {
+            'level': 'WARNING',
+            'class': 'logging.FileHandler',
+            'filename': BASE_DIR / 'logs/django.log',
+            'formatter': 'verbose'
+        },
+    },
+    'root': {
+        'handlers': ['file'],
+        'level': 'WARNING',
+    },
+}

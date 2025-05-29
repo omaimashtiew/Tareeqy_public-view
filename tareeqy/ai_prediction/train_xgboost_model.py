@@ -107,6 +107,10 @@ def fetch_data(use_cache=True):
         # Use table names consistent with XGBoost_Complete.py and potential config
         # Assuming ai_config.APP_NAME is defined and correct, otherwise use tareeqy
         app_name = getattr(ai_config, 'APP_NAME', 'tareeqy')
+        #sql ingection
+        allowed_app_names = ['tareeqy']
+        if app_name not in allowed_app_names:
+            raise ValueError(f"Unsafe app_name detected: {app_name}")
 
         fences_df = pd.read_sql(f"SELECT id, name, latitude, longitude, city FROM {app_name}_fence", conn)
         status_df = pd.read_sql(f"""
