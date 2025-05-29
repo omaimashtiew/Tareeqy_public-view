@@ -197,15 +197,14 @@ LOGGING = {
         'verbose': {'format': '{levelname} {asctime} {module} {message}', 'style': '{'},
     },
     'handlers': {
-        'file': {
+        'console': {
             'level': 'WARNING',
-            'class': 'logging.FileHandler',
-            'filename': BASE_DIR / 'logs/django.log',
-            'formatter': 'verbose'
+            'class': 'logging.StreamHandler',  # طباعة في الكونسول
+            'formatter': 'verbose',
         },
     },
     'root': {
-        'handlers': ['file'],
+        'handlers': ['console'],
         'level': 'WARNING',
     },
 }
