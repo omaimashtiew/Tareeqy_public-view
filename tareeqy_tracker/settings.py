@@ -33,7 +33,7 @@ STATICFILES_DIRS = [
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')  # للملفات المجمعة في الإنتاج
 
 STATIC_ROOT = BASE_DIR / 'staticfiles'
-ALLOWED_HOSTS = config("DJANGO_ALLOWED_HOSTS", default="").split(",")
+ALLOWED_HOSTS = [config('DJANGO_ALLOWED_HOSTS')]
 TELEGRAM_API_ID = config("TELEGRAM_API_ID", cast=int)
 TELEGRAM_API_HASH = config("TELEGRAM_API_HASH")
 phone_number = config("TELEGRAM_PHONE")
