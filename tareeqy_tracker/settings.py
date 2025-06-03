@@ -21,7 +21,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = config("DJANGO_SECRET_KEY")
+SECRET_KEY = "tempkey123"
 from telethon.sync import TelegramClient
 
 DEBUG = config("DEBUG", default=False, cast=bool)
@@ -114,15 +114,15 @@ WSGI_APPLICATION = "tareeqy_tracker.wsgi.application"
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.mysql',
-        'NAME': config("DB_NAME"),
-        'USER': config("DB_USER"),
-        'PASSWORD': config("DB_PASSWORD"),
-        'HOST': config("DB_HOST"),
-        'PORT': config("DB_PORT"),
-        'OPTIONS': {'charset': 'utf8mb4'},
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'tareeqy_db',
+        'USER': 'tareeqy_db_user',
+        'PASSWORD': 'lQoSCfDWLRDZ9VGKSED5BrHiaATAC8IN',
+        'HOST': 'dpg-d0vg3vvdiees73csf8cg-a.oregon-postgres.render.com',
+        'PORT': '5432',
     }
 }
+
 
 
 
