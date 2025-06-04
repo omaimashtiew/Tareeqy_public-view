@@ -41,9 +41,9 @@ TELEGRAM_CHANNEL = config("TELEGRAM_CHANNEL")
 
 # HTTPS settings
 SECURE_SSL_REDIRECT = False
-SESSION_COOKIE_SECURE = True
-CSRF_COOKIE_SECURE = True
-SECURE_HSTS_SECONDS = 31536000  # سنة كاملة
+SESSION_COOKIE_SECURE = False
+CSRF_COOKIE_SECURE = False
+SECURE_HSTS_SECONDS = 0
 SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 SECURE_HSTS_PRELOAD = True
 SECURE_BROWSER_XSS_FILTER = True
@@ -87,7 +87,7 @@ ROOT_URLCONF = "tareeqy_tracker.urls"
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 CSRF_TRUSTED_ORIGINS = [
-    "tareeqyyproject-production.up.railway.app",
+    "https://tareeqyyproject-production.up.railway.app",
 ]
 
 TEMPLATES = [
