@@ -40,7 +40,7 @@ phone_number = config("TELEGRAM_PHONE")
 TELEGRAM_CHANNEL = config("TELEGRAM_CHANNEL")
 
 # HTTPS settings
-SECURE_SSL_REDIRECT = True
+SECURE_SSL_REDIRECT = False
 SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True
 SECURE_HSTS_SECONDS = 31536000  # سنة كاملة
@@ -87,7 +87,7 @@ ROOT_URLCONF = "tareeqy_tracker.urls"
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 CSRF_TRUSTED_ORIGINS = [
-    "https://tareeqyyproject-production.up.railway.app",
+    "tareeqyyproject-production.up.railway.app",
 ]
 
 TEMPLATES = [
@@ -129,9 +129,6 @@ CACHES = {
         'LOCATION': 'redis://127.0.0.1:6379/1',
     }
 }
-SECURE_SSL_REDIRECT = True  # يجبر جميع الروابط على استخدام HTTPS
-SESSION_COOKIE_SECURE = True  # ينقل الكوكيز فقط عبر HTTPS
-
 
 # Password validation
 # https://docs.djangoproject.com/en/5.1/ref/settings/#auth-password-validators
