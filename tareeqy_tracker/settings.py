@@ -21,6 +21,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
+SECRET_KEY = config("DJANGO_SECRET_KEY")
 from telethon.sync import TelegramClient
 
 DEBUG = config("DEBUG", default=False, cast=bool)
@@ -32,7 +33,7 @@ STATICFILES_DIRS = [
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')  # للملفات المجمعة في الإنتاج
 
 STATIC_ROOT = BASE_DIR / 'staticfiles'
-ALLOWED_HOSTS = [config('DJANGO_ALLOWED_HOSTS')]
+ALLOWED_HOSTS = config("DJANGO_ALLOWED_HOSTS", default="").split(",")
 TELEGRAM_API_ID = config("TELEGRAM_API_ID", cast=int)
 TELEGRAM_API_HASH = config("TELEGRAM_API_HASH")
 phone_number = config("TELEGRAM_PHONE")
@@ -113,15 +114,15 @@ WSGI_APPLICATION = "tareeqy_tracker.wsgi.application"
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'tareeqy_db',
-        'USER': 'tareeqy_db_user',
-        'PASSWORD': 'lQoSCfDWLRDZ9VGKSED5BrHiaATAC8IN',
-        'HOST': 'dpg-d0vg3vvdiees73csf8cg-a.oregon-postgres.render.com',
-        'PORT': '5432',
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': config("DB_NAME"),
+        'USER': config("DB_USER"),
+        'PASSWORD': config("DB_PASSWORD"),
+        'HOST': config("DB_HOST"),
+        'PORT': config("DB_PORT"),
+        'OPTIONS': {'charset': 'utf8mb4'},
     }
 }
-
 
 
 
