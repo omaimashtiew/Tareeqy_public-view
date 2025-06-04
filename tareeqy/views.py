@@ -17,7 +17,7 @@ from django_ratelimit.decorators import ratelimit
 # --- AI Predictor Imports (Ensure this block is correctly set up for your project) ---
 try:
     # Point to the new XGBoost predictor
-    from .ai_prediction.xgboost_predictor import (
+    from .ai_prediction.RandomForest import (
         predict_wait_time, # Renamed function
         load_prediction_artifacts,
         setup_django as predictor_setup_django

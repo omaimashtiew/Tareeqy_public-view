@@ -179,8 +179,8 @@ def load_prediction_artifacts(force_reload=False):
 
     # --- NEW: Auto-trigger training ---
     try:
-        from tareeqy.ai_prediction import train_xgboost_model
-        train_xgboost_model.main()
+        from tareeqy_tracker.tareeqy.ai_prediction import train_RF_model
+        train_RF_model.main()
         print("Model trained. Retrying artifact load...")
         return load_prediction_artifacts(force_reload=True)  # Retry after training
     except Exception as train_err:
