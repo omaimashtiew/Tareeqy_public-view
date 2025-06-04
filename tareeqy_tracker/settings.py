@@ -21,7 +21,6 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = "tempkey123"
 from telethon.sync import TelegramClient
 
 DEBUG = config("DEBUG", default=False, cast=bool)
@@ -33,7 +32,7 @@ STATICFILES_DIRS = [
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')  # للملفات المجمعة في الإنتاج
 
 STATIC_ROOT = BASE_DIR / 'staticfiles'
-ALLOWED_HOSTS = config("DJANGO_ALLOWED_HOSTS", default="").split(",")
+ALLOWED_HOSTS = [config('DJANGO_ALLOWED_HOSTS')]
 TELEGRAM_API_ID = config("TELEGRAM_API_ID", cast=int)
 TELEGRAM_API_HASH = config("TELEGRAM_API_HASH")
 phone_number = config("TELEGRAM_PHONE")
