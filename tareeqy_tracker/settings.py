@@ -68,7 +68,7 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "tareeqy",
-    "ratelimit",
+    "django_ratelimit",
 ]
 
 MIDDLEWARE = [
@@ -123,6 +123,13 @@ DATABASES = {
         'OPTIONS': {'charset': 'utf8mb4'},
     }
 }
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.redis.RedisCache',
+        'LOCATION': 'redis://127.0.0.1:6379/1',
+    }
+}
+
 
 
 

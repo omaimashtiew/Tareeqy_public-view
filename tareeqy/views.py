@@ -12,7 +12,7 @@ import traceback
 from datetime import datetime, timedelta  # أضف timedelta هنا
 
 from .models import Fence, FenceStatus
-from ratelimit.decorators import ratelimit
+from django_ratelimit.decorators import ratelimit
 
 # --- AI Predictor Imports (Ensure this block is correctly set up for your project) ---
 try:
