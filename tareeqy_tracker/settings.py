@@ -129,9 +129,8 @@ CACHES = {
         'LOCATION': 'redis://127.0.0.1:6379/1',
     }
 }
-
-
-
+SECURE_SSL_REDIRECT = True  # يجبر جميع الروابط على استخدام HTTPS
+SESSION_COOKIE_SECURE = True  # ينقل الكوكيز فقط عبر HTTPS
 
 
 # Password validation
