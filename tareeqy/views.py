@@ -363,13 +363,12 @@ def get_predictions_for_location(request):
         traceback.print_exc()
         return JsonResponse({'error': 'حدث خطأ داخلي في الخادم أثناء معالجة التوقعات.'}, status=500)
 
-
-
+import requests
 @require_POST
 def api_shortest_wait_by_city(request):
     """
     API endpoint to find the checkpoint with the shortest total arrival time in a specified city.
-    It considers both travel time (based on distance) and AI-predicted wait time.
+    It considers both travel time (based on actual route distance) and AI-predicted wait time.
     """
     try:
         data = json.loads(request.body)
@@ -395,44 +394,59 @@ def api_shortest_wait_by_city(request):
 
         current_time_utc = timezone.now()
         shortest_total_minutes = float('inf')
-        shortest_wait_fence = None
-        shortest_wait_result = None
-
-        AVG_SPEED_KMH = 21
+        best_fence = None
 
         for fence in city_fences:
-            if fence['latitude'] is None or fence['longitude'] is None:
-                continue
             try:
                 fence_lat = float(fence['latitude'])
                 fence_lon = float(fence['longitude'])
-                if abs(fence_lat) < 0.0001 and abs(fence_lon) < 0.0001:
-                    continue
-            except (ValueError, TypeError):
+                
+                # احصل على المسار الفعلي من OSRM
+                osrm_url = f"http://router.project-osrm.org/route/v1/driving/{user_lon},{user_lat};{fence_lon},{fence_lat}?overview=false"
+                response = requests.get(osrm_url, timeout=5)  # مهلة 5 ثواني
+                
+                if response.status_code == 200:
+                    route_data = response.json()
+                    if route_data.get('code') == 'Ok':
+                        # استخدام وقت السعر الفعلي من OSRM
+                        travel_minutes = route_data['routes'][0]['duration'] / 60
+                    else:
+                        # Fallback إلى الحساب التقريبي إذا فشل OSRM
+                        distance_km = haversine(user_lat, user_lon, fence_lat, fence_lon)
+                        travel_minutes = (distance_km / 21) * 60  # سرعة متوسطة 21 كم/ساعة
+                else:
+                    # Fallback إذا فشل الاتصال بـ OSRM
+                    distance_km = haversine(user_lat, user_lon, fence_lat, fence_lon)
+                    travel_minutes = (distance_km / 21) * 60
+
+                # احصل على توقع وقت الانتظار
+                ai_result = predict_wait_time(
+                    fence_id=fence['id'],
+                    current_time_utc=current_time_utc,
+                    fence_latitude=fence_lat,
+                    fence_longitude=fence_lon,
+                    fence_city=fence['city'] or "unknown",
+                    current_status_str=fence['latest_status'] or 'unknown'
+                )
+
+                if ai_result.get('success') and ai_result.get('predicted_wait_minutes') is not None:
+                    total_minutes = ai_result['predicted_wait_minutes'] + travel_minutes
+
+                    if total_minutes < shortest_total_minutes:
+                        shortest_total_minutes = total_minutes
+                        best_fence = {
+                            'id': fence['id'],
+                            'name': fence['name'],
+                            'city': fence['city'] or city_name,
+                            'travel_minutes': travel_minutes,
+                            'wait_minutes': ai_result['predicted_wait_minutes']
+                        }
+
+            except Exception as e:
+                print(f"Error processing fence {fence.get('id')}: {str(e)}")
                 continue
 
-            distance_km = haversine(user_lat, user_lon, fence_lat, fence_lon)
-            travel_minutes = (distance_km / AVG_SPEED_KMH) * 60
-
-            ai_result = predict_wait_time(
-                fence_id=fence['id'],
-                current_time_utc=current_time_utc,
-                fence_latitude=fence_lat,
-                fence_longitude=fence_lon,
-                fence_city=fence['city'] or "unknown",
-                current_status_str=fence['latest_status'] or 'unknown'
-            )
-
-            if ai_result.get('success') and ai_result.get('predicted_wait_minutes') is not None:
-                wait_minutes = ai_result['predicted_wait_minutes']
-                total_minutes = wait_minutes + travel_minutes
-
-                if total_minutes < shortest_total_minutes:
-                    shortest_total_minutes = total_minutes
-                    shortest_wait_fence = fence
-                    shortest_wait_result = ai_result
-
-        if shortest_wait_fence is None:
+        if not best_fence:
             return JsonResponse({
                 'success': False,
                 'error': f'لم نتمكن من حساب وقت الوصول لأي حاجز في {city_name}.'
@@ -443,9 +457,11 @@ def api_shortest_wait_by_city(request):
 
         return JsonResponse({
             'success': True,
-            'city': city_name,
-            'fence_id': shortest_wait_fence['id'],
-            'fence_name': shortest_wait_fence['name'],
+            'city': best_fence['city'],
+            'fence_id': best_fence['id'],
+            'fence_name': best_fence['name'],
+            'travel_minutes': round(best_fence['travel_minutes']),
+            'wait_minutes': round(best_fence['wait_minutes']),
             'formatted_wait_time': format_wait_time_arabic(round(shortest_total_minutes)),
             'formatted_arrival_time': formatted_arrival_time
         })
@@ -456,5 +472,3 @@ def api_shortest_wait_by_city(request):
         print(f"ERROR in api_shortest_wait_by_city: {e}")
         traceback.print_exc()
         return JsonResponse({'success': False, 'error': f'حدث خطأ أثناء معالجة الطلب: {str(e)}'}, status=500)
-
-

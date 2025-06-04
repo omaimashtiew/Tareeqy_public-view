@@ -129,6 +129,7 @@ DATABASES = {
 CACHES = {
     'default': {
         'BACKEND': 'django.core.cache.backends.redis.RedisCache',
+        'LOCATION': config("REDIS_URL")  # هذا هو المتغير اللي Railway ضايفه تلقائي
     }
 }
 

@@ -18,45 +18,72 @@ function setupRoutePlannerEventListeners() {
     }
 
     const planRouteBtn = document.getElementById('plan-route-btn');
+    const destinationInput = document.getElementById('destination-input');
+    
+    // إضافة event listener لزر Enter
+    if (destinationInput) {
+        destinationInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                handleRoutePlanning(destinationInput, routeModalInstance);
+            }
+        });
+    }
+
     if (planRouteBtn) {
         planRouteBtn.addEventListener('click', () => {
-            const destinationInput = document.getElementById('destination-input');
-            if (destinationInput) {
-                const destination = destinationInput.value.trim();
-                if (destination) {
-                    findShortestWaitInCity(destination, routeModalInstance);
-                } else {
-                    showToast('يرجى إدخال وجهة.', 'warning');
-                }
-            }
+            handleRoutePlanning(destinationInput, routeModalInstance);
         });
     }
 }
 
-function findShortestWaitInCity(cityName, modalInstance) {
-    showToast(`<div class="d-flex align-items-center"><div class="spinner-border spinner-border-sm me-2" role="status"></div>جاري البحث في ${cityName}...</div>`, 'info', 5000);
-
-    fetch(API_URL_SHORTEST_WAIT_BY_CITY, {
-        method: 'POST',
-        headers: { 
-            'Content-Type': 'application/json', 
-            'X-CSRFToken': CSRF_TOKEN 
-        },
-body: JSON.stringify({
-    city_name: cityName,
-    latitude: currentUserLocation?.lat,
-    longitude: currentUserLocation?.lng
-})
-    })
-    .then(response => {
-        if (!response.ok) {
-            return response.json().then(err => { 
-                throw new Error(err.error || 'خطأ في الخادم'); 
-            });
+function handleRoutePlanning(destinationInput, modalInstance) {
+    const destination = destinationInput.value.trim();
+    if (destination) {
+        if (!currentUserLocation) {
+            showToast('يجب تحديد موقعك أولاً', 'warning');
+            requestUserLocation(true); // طلب تحديث الموقع
+            return;
         }
-        return response.json();
-    })
-    .then(data => {
+        findShortestWaitInCity(destination, modalInstance);
+    } else {
+        showToast('يرجى إدخال وجهة.', 'warning');
+    }
+}
+
+async function findShortestWaitInCity(cityName, modalInstance) {
+    const toastId = 'route-planning-toast';
+    showToast(
+        `<div class="d-flex align-items-center">
+            <div class="spinner-border spinner-border-sm me-2" role="status"></div>
+            جاري البحث في ${cityName}...
+        </div>`, 
+        'info', 
+        0, // 0 يعني لا يختفي تلقائياً
+        toastId
+    );
+
+    try {
+        const response = await fetch(API_URL_SHORTEST_WAIT_BY_CITY, {
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json', 
+                'X-CSRFToken': CSRF_TOKEN 
+            },
+            body: JSON.stringify({
+                city_name: cityName,
+                latitude: currentUserLocation.lat,
+                longitude: currentUserLocation.lng
+            })
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'خطأ في الخادم');
+        }
+
+        const data = await response.json();
+        dismissToast(toastId);
+
         if (data.success) {
             if (modalInstance) modalInstance.hide();
             
@@ -64,28 +91,72 @@ body: JSON.stringify({
             showToast(
                 `أقصر وقت انتظار في ${data.city}: ${data.formatted_wait_time} (${data.fence_name}) - وقت الوصول المتوقع: ${data.formatted_arrival_time}`,
                 'success',
-                4000
+                7000
             );
 
-            // البحث عن الحاجز على الخريطة وفتح popup له
-            const fence = window.allFences.find(f => f.id === data.fence_id);
-            if (fence) {
-                map.flyTo([fence.latitude, fence.longitude], DETAILED_ZOOM);
-                
-                // فتح popup للحاجز المحدد
-                const marker = findMarkerByFenceId(data.fence_id);
-                if (marker) {
-                    marker.openPopup();
-                }
-            }
+            // عرض المسار على الخريطة
+            await displayRouteToFence(data.fence_id);
         } else {
-            showToast(data.error || 'لم يتم العثور على نتائج', 'warning');
+            showToast(data.error || 'لم يتم العثور على نتائج', 'warning', 4000);
         }
-    })
-    .catch(error => {
+    } catch (error) {
         console.error('Error finding shortest wait:', error);
-        showToast(`خطأ في البحث: ${error.message}`, 'danger');
-    });
+        dismissToast(toastId);
+        showToast(`خطأ في البحث: ${error.message}`, 'danger', 5000);
+    }
+}
+
+async function displayRouteToFence(fenceId) {
+    const fence = window.allFences.find(f => f.id === fenceId);
+    if (!fence || !map) return;
+
+    try {
+        // الحصول على المسار من OSRM
+        const response = await fetch(
+            `https://router.project-osrm.org/route/v1/driving/` +
+            `${currentUserLocation.lng},${currentUserLocation.lat};` +
+            `${fence.longitude},${fence.latitude}?overview=full&geometries=geojson`
+        );
+        
+        const routeData = await response.json();
+        
+        if (routeData.code === 'Ok') {
+            // إزالة أي مسار قديم
+            if (window.currentRouteLayer) {
+                map.removeLayer(window.currentRouteLayer);
+            }
+            
+            // عرض المسار الجديد
+            const routeGeoJSON = {
+                type: 'Feature',
+                properties: {},
+                geometry: routeData.routes[0].geometry
+            };
+            
+            window.currentRouteLayer = L.geoJSON(routeGeoJSON, {
+                style: {
+                    color: '#4285F4',
+                    weight: 5,
+                    opacity: 0.8
+                }
+            }).addTo(map);
+            
+            // تكبير الخريطة لتظهر المسار كاملاً
+            map.fitBounds(window.currentRouteLayer.getBounds(), { padding: [50, 50] });
+            
+            // فتح popup للحاجز المحدد
+            const marker = findMarkerByFenceId(fenceId);
+            if (marker) {
+                marker.openPopup();
+            }
+        }
+    } catch (error) {
+        console.error('Error displaying route:', error);
+        // Fallback: فقط اذهب إلى الموقع بدون عرض المسار
+        map.flyTo([fence.latitude, fence.longitude], DETAILED_ZOOM);
+        const marker = findMarkerByFenceId(fenceId);
+        if (marker) marker.openPopup();
+    }
 }
 
 function findMarkerByFenceId(fenceId) {
@@ -97,6 +168,3 @@ function findMarkerByFenceId(fenceId) {
     });
     return foundMarker;
 }
-
-// تأكد من تعريف window.allFences عند تحميل البيانات
-// يمكنك إضافته في ملف data_handler.js أو main_map.js عند تحميل البيانات

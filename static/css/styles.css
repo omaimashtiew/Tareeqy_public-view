@@ -319,7 +319,6 @@ html, body {
 /* Desktop: Sidebar is part of the flow */
 @media (min-width: 992px) {
     .app-header .search-container { margin-right: 15px; margin-left: auto; max-width: 400px; } /* Wider search */
-    .content-wrapper { /* flex-direction: row-reverse; already set for RTL globally */ }
     
     .status-legend { right: 10px; bottom: 4rem; }
     .fab-location { left: 10px; }
@@ -397,4 +396,11 @@ html, body {
 
 .prediction-error {
     color: #e74c3c;
+}
+/* في ملف styles.css */
+.leaflet-route-line {
+    stroke: #4285F4;
+    stroke-width: 5;
+    stroke-opacity: 0.8;
+    fill: none;
 }
