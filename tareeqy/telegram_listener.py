@@ -148,16 +148,44 @@ async def new_message_handler(event):
 
 async def start_client():
     try:
-        logger.info("Trelegram listener is UP and listining for nre massage")
-        print("✅ Telegram Listener is UP and listening for new messages...")
-        await client.start()
-        logger.info("Telegram client started, listening for new messages...")
+        print("🟢 Entering start_client()")
+        logger.info("Attempting to start Telegram client")
+        
+        # تحقق من اتصال العميل أولاً
+        print("🟠 Attempting client.connect()")
+        await client.connect()
+        print("🟢 Client connected")
+        
+        # تحقق من المصادقة
+        if not await client.is_user_authorized():
+            error_msg = "Client is not authorized. Please login first."
+            print(f"🔴 {error_msg}")
+            logger.error(error_msg)
+            return
+            
+        print("🟢 Client is authorized")
+        logger.info("Client is authorized")
+        
+        # تحقق من القناة
+        try:
+            entity = await client.get_entity(CHANNEL_USERNAME)
+            success_msg = f"Successfully accessed channel: {entity.title}"
+            print(f"✅ {success_msg}")
+            logger.info(success_msg)
+        except Exception as e:
+            error_msg = f"Cannot access channel {CHANNEL_USERNAME}: {e}"
+            print(f"🔴 {error_msg}")
+            logger.error(error_msg)
+            return
+            
+        print("✅ Telegram Listener is UP and running")
+        logger.info("Telegram listener is UP and listening for new messages")
         await client.run_until_disconnected()
-    except asyncio.CancelledError:
-        logger.info("Telegram client shutting down...")
-        await client.disconnect()
+        
     except Exception as e:
-        logger.error(f"Telegram client error: {e}")
+        error_msg = f"Telegram client critical error: {e}"
+        print(f"🔥 {error_msg}")
+        logger.error(error_msg, exc_info=True)
         raise
 
 # Start the client
