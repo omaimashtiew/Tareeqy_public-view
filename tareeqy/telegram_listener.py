@@ -143,6 +143,7 @@ async def new_message_handler(event):
 
 async def start_client():
     try:
+        logger.info("Trelegram listener is UP and listining for nre massage")
         await client.start()
         logger.info("Telegram client started, listening for new messages...")
         await client.run_until_disconnected()

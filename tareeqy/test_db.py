@@ -19,11 +19,14 @@ from tareeqy.models import FenceStatus, Fence
 
 
 # بيانات من settings.py
-api_id = settings.TELEGRAM_API_ID
-api_hash = settings.TELEGRAM_API_HASH
-channel_username = settings.TELEGRAM_CHANNEL
-STATUS_KEYWORDS = settings.STATUS_KEYWORDS
-
+api_id = 28313142
+api_hash = "1937d577a86353af13fbb92c82f25306"
+channel_username = "@ahwalaltreq"
+STATUS_KEYWORDS = {
+    "open": ["✅","مفتوح", "مفتوحة", "سالك", "سالكة","نظيف","فتحت","سالكه","فاتحات","فتح"],
+    "closed": ["🔴","⛔️","❌","مغلق", "مغلقة", "سكر" ,"مسكر","مغلقه"," وقوف تام"," واقف"],
+    "sever_traffic_jam":["ازمة", "مازم", "كثافة سير","ازمه","حاجز","مخصوم","🛑"],
+}
 # الحواجز المستهدفة
 TARGET_KEYWORDS = [
     "اريحا", "العيزرية", "عناتا", "النشاش", "روابي", "سلفيت", "بزاريا", "كفر لاقف",
@@ -33,8 +36,8 @@ TARGET_KEYWORDS = [
     "الزعيم", "حواره", "الباذان", "النبي صالح", "حارس", "بديا", "الساوية"
 ]
 
-start_date = timezone.make_aware(datetime(2025, 5, 14))
-end_date = timezone.make_aware(datetime(2025, 5, 14))
+start_date = timezone.make_aware(datetime(2025, 5, 22))
+end_date = timezone.make_aware(datetime(2025, 6, 7))
 
 
 def classify_status(text):
