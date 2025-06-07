@@ -58,16 +58,16 @@ async def start_client():
                 print("🔴 جلسة التليجرام غير مصرّحة! تأكد من تسجيل الدخول أولاً.")
                 return
             
-            print("✅ تم الاتصال بنجاح وجاري الاستماع للرسائل...")
+            logger.info("✅ تم الاتصال بنجاح وجاري الاستماع للرسائل...")
             await client.run_until_disconnected()
             
         except RPCError as e:
-            print(f"🔴 خطأ في الاتصال: {e} - جاري إعادة المحاولة خلال 30 ثانية...")
+            logger.info(f"🔴 خطأ في الاتصال: {e} - جاري إعادة المحاولة خلال 30 ثانية...")
             await client.disconnect()
             time.sleep(30)
             
         except Exception as e:
-            print(f"🔥 خطأ غير متوقع: {e}")
+            logger.info(f"🔥 خطأ غير متوقع: {e}")
             await client.disconnect()
             time.sleep(60)
 
@@ -185,7 +185,7 @@ async def process_new_message(message):
 # Set up the event handler to listen for new messages
 @client.on(events.NewMessage(chats=CHANNEL_USERNAME))
 async def new_message_handler(event):
-    print(f"📩 New message received: {event.message.text[:50]}...")  # طباعة جزء من الرسالة للتأكد
+    logger.info(f"📩 New message received: {event.message.text[:50]}...")  # طباعة جزء من الرسالة للتأكد
     await process_new_message(event)
 
 
