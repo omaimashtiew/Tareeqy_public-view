@@ -3,7 +3,7 @@ import asyncio
 import sys
 import os
 from pathlib import Path
-
+print("🟢 Starting Telegram Listener Script - Debug Checkpoint 1")
 # أضف مسار المشروع إلى sys.path
 BASE_DIR = Path(__file__).resolve().parent.parent  # تغيير من parent.parent.parent إلى parent.parent
 sys.path.insert(0, str(BASE_DIR))  # استخدام insert بدلاً من append
@@ -60,7 +60,7 @@ async def start_client():
             await client.disconnect()
             time.sleep(60)
 
-
+print(f"🟠 Session file path: {os.path.abspath('tareeqy_tracker/tareeqy_session')}")
 # Define Palestine time zone
 PALESTINE_TZ = pytz.timezone('Asia/Gaza')
 COMMON_PREFIXES = r'^(ال|ل|لل|بال|ول|في|عن|من|عند|وال)'
