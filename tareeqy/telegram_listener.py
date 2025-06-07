@@ -1,5 +1,19 @@
 import logging
 import asyncio
+import sys
+import os
+from pathlib import Path
+
+# أضف مسار المشروع إلى sys.path
+BASE_DIR = Path(__file__).resolve().parent.parent  # تغيير من parent.parent.parent إلى parent.parent
+sys.path.insert(0, str(BASE_DIR))  # استخدام insert بدلاً من append
+
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'tareeqy_tracker.settings')
+
+import django
+django.setup()
+
+# بقية الاستيرادات بعد setup()
 from datetime import datetime
 import pytz
 import re
@@ -7,19 +21,10 @@ from fuzzywuzzy import fuzz
 from fuzzywuzzy import process
 from telethon import TelegramClient, events
 from asgiref.sync import sync_to_async
-from django.conf import settings  # Add this import for settings
-
-import os
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'tareeqy_tracker.settings')
-
-import django
-django.setup()
+from django.conf import settings
 
 from tareeqy.models import Fence, FenceStatus
 
-from tareeqy.models import Fence, FenceStatus
-import sys, os
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Setting up logger
 logging.basicConfig(level=logging.INFO)
@@ -144,6 +149,7 @@ async def new_message_handler(event):
 async def start_client():
     try:
         logger.info("Trelegram listener is UP and listining for nre massage")
+        print("✅ Telegram Listener is UP and listening for new messages...")
         await client.start()
         logger.info("Telegram client started, listening for new messages...")
         await client.run_until_disconnected()
