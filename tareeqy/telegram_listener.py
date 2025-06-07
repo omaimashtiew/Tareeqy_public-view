@@ -35,6 +35,32 @@ API_ID = settings.TELEGRAM_API_ID
 API_HASH = settings.TELEGRAM_API_HASH
 CHANNEL_USERNAME = settings.TELEGRAM_CHANNEL
 
+
+import time
+from telethon.errors import RPCError
+
+async def start_client():
+    while True:  # إعادة التشغيل التلقائي عند الفشل
+        try:
+            await client.connect()
+            if not await client.is_user_authorized():
+                print("🔴 جلسة التليجرام غير مصرّحة! تأكد من تسجيل الدخول أولاً.")
+                return
+            
+            print("✅ تم الاتصال بنجاح وجاري الاستماع للرسائل...")
+            await client.run_until_disconnected()
+            
+        except RPCError as e:
+            print(f"🔴 خطأ في الاتصال: {e} - جاري إعادة المحاولة خلال 30 ثانية...")
+            await client.disconnect()
+            time.sleep(30)
+            
+        except Exception as e:
+            print(f"🔥 خطأ غير متوقع: {e}")
+            await client.disconnect()
+            time.sleep(60)
+
+
 # Define Palestine time zone
 PALESTINE_TZ = pytz.timezone('Asia/Gaza')
 COMMON_PREFIXES = r'^(ال|ل|لل|بال|ول|في|عن|من|عند|وال)'
@@ -143,50 +169,10 @@ async def process_new_message(message):
 # Set up the event handler to listen for new messages
 @client.on(events.NewMessage(chats=CHANNEL_USERNAME))
 async def new_message_handler(event):
+    print(f"📩 New message received: {event.message.text[:50]}...")  # طباعة جزء من الرسالة للتأكد
     await process_new_message(event)
 
 
-async def start_client():
-    try:
-        print("🟢 Entering start_client()")
-        logger.info("Attempting to start Telegram client")
-        
-        # تحقق من اتصال العميل أولاً
-        print("🟠 Attempting client.connect()")
-        await client.connect()
-        print("🟢 Client connected")
-        
-        # تحقق من المصادقة
-        if not await client.is_user_authorized():
-            error_msg = "Client is not authorized. Please login first."
-            print(f"🔴 {error_msg}")
-            logger.error(error_msg)
-            return
-            
-        print("🟢 Client is authorized")
-        logger.info("Client is authorized")
-        
-        # تحقق من القناة
-        try:
-            entity = await client.get_entity(CHANNEL_USERNAME)
-            success_msg = f"Successfully accessed channel: {entity.title}"
-            print(f"✅ {success_msg}")
-            logger.info(success_msg)
-        except Exception as e:
-            error_msg = f"Cannot access channel {CHANNEL_USERNAME}: {e}"
-            print(f"🔴 {error_msg}")
-            logger.error(error_msg)
-            return
-            
-        print("✅ Telegram Listener is UP and running")
-        logger.info("Telegram listener is UP and listening for new messages")
-        await client.run_until_disconnected()
-        
-    except Exception as e:
-        error_msg = f"Telegram client critical error: {e}"
-        print(f"🔥 {error_msg}")
-        logger.error(error_msg, exc_info=True)
-        raise
 
 # Start the client
 if __name__ == "__main__":
