@@ -1,2 +1,2 @@
 web: python manage.py migrate && gunicorn tareeqy_tracker.wsgi:application
-listener: while true; do python tareeqy_tracker/tareeqy/telegram_listener.py; sleep 30; done
+listener: cd tareeqy_tracker && while true; do python -u tareeqy/telegram_listener.py 2>&1; sleep 30; done

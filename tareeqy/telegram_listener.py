@@ -1,18 +1,27 @@
-import logging
-import asyncio
-import sys
 import os
+import sys
 from pathlib import Path
-print("🟢 Starting Telegram Listener Script - Debug Checkpoint 1")
-# أضف مسار المشروع إلى sys.path
-BASE_DIR = Path(__file__).resolve().parent.parent  # تغيير من parent.parent.parent إلى parent.parent
-sys.path.insert(0, str(BASE_DIR))  # استخدام insert بدلاً من append
+
+# تحديد المسار الصحيح
+BASE_DIR = Path(__file__).resolve().parent.parent.parent  # يجب أن يشير إلى C:\Tareeqy
+sys.path.insert(0, str(BASE_DIR))
+sys.path.insert(0, os.path.join(BASE_DIR, 'tareeqy_tracker'))
+
+print(f"🟢 BASE_DIR: {BASE_DIR}")
+print(f"🟢 Python Path: {sys.path}")
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'tareeqy_tracker.settings')
-
-import django
-django.setup()
-
+import logging
+try:
+    import django
+    django.setup()
+    print("✅ تم تحميل إعدادات Django بنجاح")
+except Exception as e:
+    print(f"🔥 خطأ في إعدادات Django: {e}")
+    print("🔴 تأكد من:")
+    print("1. وجود ملف settings.py في tareeqy_tracker/tareeqy_tracker/")
+    print("2. وجود __init__.py في كل مجلد")
+    raise
 # بقية الاستيرادات بعد setup()
 from datetime import datetime
 import pytz
@@ -24,7 +33,9 @@ from asgiref.sync import sync_to_async
 from django.conf import settings
 
 from tareeqy.models import Fence, FenceStatus
-
+print(f"✅ Current directory: {os.getcwd()}")
+print(f"✅ Script path: {os.path.abspath(__file__)}")
+print(f"✅ Session path: {os.path.abspath('tareeqy/tareeqy_session')}")
 
 # Setting up logger
 logging.basicConfig(level=logging.INFO)
@@ -64,10 +75,15 @@ print(f"🟠 Session file path: {os.path.abspath('tareeqy_tracker/tareeqy_sessio
 # Define Palestine time zone
 PALESTINE_TZ = pytz.timezone('Asia/Gaza')
 COMMON_PREFIXES = r'^(ال|ل|لل|بال|ول|في|عن|من|عند|وال)'
-
+import asyncio
 # Initialize the Telegram Client
-client = TelegramClient("tareeqy_tracker/tareeqy_session", API_ID, API_HASH)
+SESSION_PATH = os.path.join(BASE_DIR, "tareeqy_tracker", "tareeqy", "tareeqy_session")
+BASE_DIR = Path(__file__).resolve().parent.parent  # يفترض BASE_DIR = C:\Tareeqy
 
+SESSION_PATH = os.path.join(BASE_DIR, "tareeqy_tracker", "tareeqy", "tareeqy_session")
+os.makedirs(os.path.dirname(SESSION_PATH), exist_ok=True)  # تأكد أن المجلد موجود
+
+client = TelegramClient(SESSION_PATH, API_ID, API_HASH)
 def normalize_text(text):
     """Normalize Arabic text for matching"""
     if not text:
