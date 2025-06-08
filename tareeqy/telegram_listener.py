@@ -2,25 +2,29 @@ import os
 import sys
 from pathlib import Path
 
-# تحديد المسار الصحيح
-BASE_DIR = Path(__file__).resolve().parent.parent.parent  # يجب أن يشير إلى C:\Tareeqy
-sys.path.insert(0, str(BASE_DIR))
-sys.path.insert(0, os.path.join(BASE_DIR, 'tareeqy_tracker'))
+BASE_DIR = Path(__file__).resolve().parent.parent  # يشير إلى: tareeqy_tracker
+sys.path.insert(0, str(BASE_DIR))  # Add path where manage.py and settings.py are
 
 print(f"🟢 BASE_DIR: {BASE_DIR}")
 print(f"🟢 Python Path: {sys.path}")
+
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'tareeqy_tracker.settings')
+
+
+logger.info(f"🟢 BASE_DIR: {BASE_DIR}")
+logger.info(f"🟢 Python Path: {sys.path}")
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'tareeqy_tracker.settings')
 import logging
 try:
     import django
     django.setup()
-    print("✅ تم تحميل إعدادات Django بنجاح")
+    logger.info("✅ تم تحميل إعدادات Django بنجاح")
 except Exception as e:
-    print(f"🔥 خطأ في إعدادات Django: {e}")
-    print("🔴 تأكد من:")
-    print("1. وجود ملف settings.py في tareeqy_tracker/tareeqy_tracker/")
-    print("2. وجود __init__.py في كل مجلد")
+    logger.info(f"🔥 خطأ في إعدادات Django: {e}")
+    logger.info("🔴 تأكد من:")
+    logger.info("1. وجود ملف settings.py في tareeqy_tracker/tareeqy_tracker/")
+    logger.info("2. وجود __init__.py في كل مجلد")
     raise
 # بقية الاستيرادات بعد setup()
 from datetime import datetime
@@ -55,7 +59,7 @@ async def start_client():
         try:
             await client.connect()
             if not await client.is_user_authorized():
-                print("🔴 جلسة التليجرام غير مصرّحة! تأكد من تسجيل الدخول أولاً.")
+                logger.info("🔴 جلسة التليجرام غير مصرّحة! تأكد من تسجيل الدخول أولاً.")
                 return
             
             logger.info("✅ تم الاتصال بنجاح وجاري الاستماع للرسائل...")
@@ -71,16 +75,13 @@ async def start_client():
             await client.disconnect()
             time.sleep(60)
 
-print(f"🟠 Session file path: {os.path.abspath('tareeqy_tracker/tareeqy_session')}")
+logger.info(f"🟠 Session file path: {os.path.abspath('tareeqy_tracker/tareeqy_session')}")
 # Define Palestine time zone
 PALESTINE_TZ = pytz.timezone('Asia/Gaza')
 COMMON_PREFIXES = r'^(ال|ل|لل|بال|ول|في|عن|من|عند|وال)'
 import asyncio
 # Initialize the Telegram Client
-SESSION_PATH = os.path.join(BASE_DIR, "tareeqy_tracker", "tareeqy", "tareeqy_session")
-BASE_DIR = Path(__file__).resolve().parent.parent  # يفترض BASE_DIR = C:\Tareeqy
 
-SESSION_PATH = os.path.join(BASE_DIR, "tareeqy_tracker", "tareeqy", "tareeqy_session")
 os.makedirs(os.path.dirname(SESSION_PATH), exist_ok=True)  # تأكد أن المجلد موجود
 
 client = TelegramClient(SESSION_PATH, API_ID, API_HASH)
