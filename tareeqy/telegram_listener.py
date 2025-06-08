@@ -13,7 +13,7 @@ os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'tareeqy_tracker.settings')
 
 logger.info(f"🟢 BASE_DIR: {BASE_DIR}")
 logger.info(f"🟢 Python Path: {sys.path}")
-
+import logger
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'tareeqy_tracker.settings')
 import logging
 try:
