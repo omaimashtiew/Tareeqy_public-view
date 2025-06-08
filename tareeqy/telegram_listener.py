@@ -16,6 +16,7 @@ logger.info(f"🟢 Python Path: {sys.path}")
 import logger
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'tareeqy_tracker.settings')
 import logging
+import logger
 try:
     import django
     django.setup()
