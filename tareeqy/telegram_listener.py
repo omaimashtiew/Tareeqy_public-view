@@ -1,6 +1,7 @@
 import os
 import sys
 from pathlib import Path
+import logger
 
 BASE_DIR = Path(__file__).resolve().parent.parent  # يشير إلى: tareeqy_tracker
 sys.path.insert(0, str(BASE_DIR))  # Add path where manage.py and settings.py are
@@ -13,10 +14,8 @@ os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'tareeqy_tracker.settings')
 
 logger.info(f"🟢 BASE_DIR: {BASE_DIR}")
 logger.info(f"🟢 Python Path: {sys.path}")
-import logger
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'tareeqy_tracker.settings')
 import logging
-import logger
 try:
     import django
     django.setup()
