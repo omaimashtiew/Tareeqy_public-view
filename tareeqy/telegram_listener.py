@@ -1,7 +1,9 @@
 import os
 import sys
 from pathlib import Path
-import logger
+import logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 BASE_DIR = Path(__file__).resolve().parent.parent  # يشير إلى: tareeqy_tracker
 sys.path.insert(0, str(BASE_DIR))  # Add path where manage.py and settings.py are
@@ -14,8 +16,6 @@ os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'tareeqy_tracker.settings')
 
 logger.info(f"🟢 BASE_DIR: {BASE_DIR}")
 logger.info(f"🟢 Python Path: {sys.path}")
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'tareeqy_tracker.settings')
-import logging
 try:
     import django
     django.setup()
@@ -41,9 +41,6 @@ print(f"✅ Current directory: {os.getcwd()}")
 print(f"✅ Script path: {os.path.abspath(__file__)}")
 print(f"✅ Session path: {os.path.abspath('tareeqy/tareeqy_session')}")
 
-# Setting up logger
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
 
 from django.conf import settings
 API_ID = settings.TELEGRAM_API_ID
@@ -81,7 +78,7 @@ PALESTINE_TZ = pytz.timezone('Asia/Gaza')
 COMMON_PREFIXES = r'^(ال|ل|لل|بال|ول|في|عن|من|عند|وال)'
 import asyncio
 # Initialize the Telegram Client
-
+SESSION_PATH = os.path.join(BASE_DIR,"tareeqy_tracker","tareeqy","tareeqy_session")
 os.makedirs(os.path.dirname(SESSION_PATH), exist_ok=True)  # تأكد أن المجلد موجود
 
 client = TelegramClient(SESSION_PATH, API_ID, API_HASH)
