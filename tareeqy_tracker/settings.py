@@ -12,6 +12,8 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 
 from pathlib import Path
 from decouple import config
+import os
+
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -23,6 +25,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = config("DJANGO_SECRET_KEY")
 from telethon.sync import TelegramClient
+ENCRYPTION_KEY = b'MM7ebnh1RKoO9dRtZM3njQ1tvDthAwYe6XiMcovueE8='
 
 DEBUG = config("DEBUG", default=False, cast=bool)
 import os 
