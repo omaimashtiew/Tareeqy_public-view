@@ -178,7 +178,7 @@ async def new_message_handler(event):
 async def start_client():
     while True:
         try:
-            await client.connect()
+            await client.start()
             if not await client.is_user_authorized():
                 logger.info("🔴 جلسة التليجرام غير مصرّحة! تأكد من تسجيل الدخول أولاً.")
                 return
