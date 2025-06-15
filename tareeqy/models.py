@@ -21,6 +21,8 @@ class FenceStatus(models.Model):
     status = models.CharField(max_length=50, choices=STATUS_CHOICES)
     message_time = models.DateTimeField()
     image = models.CharField(max_length=255, blank=True, null=True)
+    telegram_message = models.ForeignKey('TelegramMessage', on_delete=models.CASCADE, null=True, blank=True)
+
 
     class Meta:
         ordering = ['-message_time']
@@ -38,7 +40,7 @@ class SecretData(models.Model):
 
 
 class TelegramMessage(models.Model):
-    message_id = models.BigIntegerField(unique=True)  # معرّف الرسالة من تليجرام
+    message_id = models.BigIntegerField(primary_key=True)
     text = models.TextField()
     message_time = models.DateTimeField()
     source = models.CharField(max_length=255, blank=True, null=True)  # مثل اسم القناة أو المستخدم

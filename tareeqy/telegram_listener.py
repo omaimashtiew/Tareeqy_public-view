@@ -114,8 +114,8 @@ def find_fences_in_message(message_text, fences):
     
     return list(found)
 
-def update_fence_status(fence, status, message_time):
-    """Always create new status record for history"""
+def update_fence_status(fence, status, message_time, telegram_message):
+    """Always create new status record for history linked to TelegramMessage"""
     try:
         image = {
             "open": "/static/images/open.png",
@@ -127,28 +127,26 @@ def update_fence_status(fence, status, message_time):
             fence=fence,
             status=status,
             message_time=message_time,
-            image=image
+            image=image,
+            telegram_message=telegram_message
         )
         logger.info(f"Recorded {fence.name} status: {status} at {message_time}")
     except Exception as e:
         logger.error(f"Error updating {fence.name}: {e}")
+
 
 def get_message_hash(text):
     """Compute sha256 hash of message text"""
     return hashlib.sha256(text.encode('utf-8')).hexdigest()
 
 async def process_new_message(message):
-    """Handle incoming messages."""
     if message and message.text:
         try:
             msg_date = message.date.replace(tzinfo=pytz.UTC).astimezone(PALESTINE_TZ)
             message_text = message.text
             status = analyze_message(message_text)
-
-            # حساب الهاش
             msg_hash = get_message_hash(message_text)
 
-            # تخزين أو تحديث رسالة التليجرام مع الهاش
             obj, created = await sync_to_async(TelegramMessage.objects.update_or_create)(
                 message_id=message.id,
                 defaults={
@@ -164,12 +162,13 @@ async def process_new_message(message):
             if status != "Unknown":
                 fences = await sync_to_async(list)(Fence.objects.all())
                 matching_fences = await sync_to_async(find_fences_in_message)(message_text, fences)
-                
+
                 for fence in matching_fences:
-                    await sync_to_async(update_fence_status)(fence, status, msg_date)
-                    logger.info(f"Updated {fence.name} to {status} at {msg_date}")
+                    await sync_to_async(update_fence_status)(fence, status, msg_date, obj)
+
         except Exception as e:
             logger.error(f"Error processing message: {e}")
+
 
 @client.on(events.NewMessage(chats=CHANNEL_USERNAME))
 async def new_message_handler(event):
@@ -185,6 +184,8 @@ async def start_client():
                 return
             
             logger.info("✅ تم الاتصال بنجاح وجاري الاستماع للرسائل...")
+            print("✅ Telegram client connected")
+
             await client.run_until_disconnected()
             
         except RPCError as e:

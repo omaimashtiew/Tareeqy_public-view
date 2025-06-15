@@ -1,5 +1,6 @@
 from django.contrib import admin
-from .models import Fence, FenceStatus
+from .models import Fence, FenceStatus , TelegramMessage
+admin.site.register(TelegramMessage)
 
 @admin.register(Fence)
 class FenceAdmin(admin.ModelAdmin):
