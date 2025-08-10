@@ -1,18 +1,1 @@
-# asgi.py
-
-import os
-from django.core.asgi import get_asgi_application
-from channels.routing import ProtocolTypeRouter, URLRouter
-from channels.auth import AuthMiddlewareStack
-from . import routing  # Import your WebSocket routing
-
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'tareeqy_tracker.settings')
-
-application = ProtocolTypeRouter({
-    "http": get_asgi_application(),
-    "websocket": AuthMiddlewareStack(
-        URLRouter(
-            routing.websocket_urlpatterns  # Define WebSocket routes
-        )
-    ),
-})
+﻿# This file is private and its content is not available here.

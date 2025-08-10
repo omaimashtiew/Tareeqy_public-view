@@ -1,5 +1,1 @@
-python -m venv venv
-.\venv\Scripts\activate
-pip install -r requirements.txt
-python manage.py runserver
-# Set-ExecutionPolicy -ExecutionPolicy Bypass -Scope Process
+﻿# This file is private and its content is not available here.

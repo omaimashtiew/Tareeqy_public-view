@@ -1,3 +1,1 @@
-from django.test import TestCase
-
-# Create your tests here.
+﻿# This file is private and its content is not available here.

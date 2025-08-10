@@ -1,4 +1,1 @@
-@echo off
-cd /d "C:\Users\Nadeen\Documents\Tareeqy\TareeqyyProject"
-call ..\EnvTareeqy\Scripts\activate.bat
-python telegram_listener.py
+﻿REM This file is private and its content is not available here.

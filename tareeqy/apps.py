@@ -1,6 +1,1 @@
-from django.apps import AppConfig
-
-
-class TareeqyConfig(AppConfig):
-    default_auto_field = 'django.db.models.BigAutoField'
-    name = 'tareeqy'
+﻿# This file is private and its content is not available here.
